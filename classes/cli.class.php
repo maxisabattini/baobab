@@ -24,7 +24,7 @@ class Cli {
         }
     }
 
-    protected function getParam($name) {        
+    protected function getParam($name) {
         if( BAO_CMD ) {
             if( ! is_array( $this->_params ) ) {
                 global $argv;
@@ -36,12 +36,12 @@ class Cli {
                     }
                 }
             }
-            if( isset($this->_params[$name]) ) {
-                return $this->_params[$name];
+            if( isset($this->_params["-$name"]) ) {
+                return $this->_params["-$name"];
             }
             return false;
         } else {
-            return  $_REQUEST[$name];
+            return $_REQUEST[$name];
         }
     }
 
