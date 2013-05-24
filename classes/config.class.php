@@ -32,17 +32,13 @@ class Config {
 		$files = array (); 
 		$dir = BAO_PATH . '/cfg/';
 
-		if ( is_dir($dir)) 
-		{
-		    if ($dh = opendir($dir)) 
-		    {
-				while (($file = readdir($dh)) !== false) 
-				{
+		if ( is_dir($dir)) {
+		    if ($dh = opendir($dir)) {
+				while (($file = readdir($dh)) !== false) {
 					if ( ! is_dir($dir . $file) && substr($file, -4, 4) == '.php') 
 						$files[] = $dir . $file; 
 				}
 				closedir($dh);
-
 				sort($files); 
 		    }
 		}

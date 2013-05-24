@@ -4,10 +4,10 @@ namespace baobab;
 
 class Database {
 
-	public static $_instances = array(); 
-	private $_conn;
-	private $_stmt;
-	private $_dsn;
+    public static $_instances = array(); 
+    private $_conn;
+    private $_stmt;
+    private $_dsn;
     private $_query;
     private $_queryParams;
     private $_errorInfo = false;
@@ -180,5 +180,4 @@ class Database {
 	public function getErrorInfo() {
 		return $this->_errorInfo;
 	}
-
 }

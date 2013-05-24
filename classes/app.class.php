@@ -52,8 +52,6 @@ class App {
 		return $pageURL;
 	}
 	
-	private $c = array();
-	
 	private $pageInfo = array();
 	
 	public function getPageInfo() {
@@ -117,7 +115,7 @@ class App {
 		}
 	}
 	
-    public function getPageUrl($page) {
+	public function getPageUrl($page) {
 		if(!$page) {
 			$page=".";
 		}		
@@ -127,7 +125,7 @@ class App {
 			$parts = explode(".", $page );
 			return $this->siteUrl . "/" . implode("/", $parts) ;
 		}		
-    }	
+	}
 	
 	private static $instance = null;
 
@@ -142,10 +140,10 @@ class App {
 	
 		$prefix="";
 		$name=$view;
-        $class = ucfirst($name);
+		$class = ucfirst($name);
 		if( strpos($view, ".") !== false ) {
 			list($prefix, $name) = explode(".", $view);
-            $class = ucfirst($prefix) . ucfirst($name);
+			$class = ucfirst($prefix) . ucfirst($name);
 		}
 	
 		if ( $prefix == "app" ) {
@@ -173,40 +171,39 @@ class App {
 			$className = "\\baobab\\$class"."Controller";
 			$controller = new $className( $viewFile, $params );
 		} else {
-            Log::warn("can not load controller : $controllerFile");
+		        Log::warn("can not load controller : $controllerFile");
 			$controller = new Controller( $viewFile, $params );
 		}
 		
-        $controller->render();
+		$controller->render();
 	}
 
-    public function loadController( $view , $params = array() ) {
-        $viewFile = $this->sitePath . "/$view.php";
-        $controllerFile = $this->sitePath . "/controllers/$view.c.php";
-        if ( file_exists( $controllerFile ) ) {
-            require_once $controllerFile;
-            $class = ucfirst($view);
-            $className = "\\baobab\\$class"."Controller";
-            $controller = new $className( $viewFile, $params );
-        } else {
-            $controller = new Controller( $viewFile, $params );
+	public function loadController( $view , $params = array() ) {
+                $viewFile = $this->sitePath . "/$view.php";
+                $controllerFile = $this->sitePath . "/controllers/$view.c.php";
+                if ( file_exists( $controllerFile ) ) {
+                        require_once $controllerFile;
+                        $class = ucfirst($view);
+                        $className = "\\baobab\\$class"."Controller";
+                        $controller = new $className( $viewFile, $params );
+                } else {
+                        $controller = new Controller( $viewFile, $params );
+                }
+                $controller->exposeVarsAsGlobals();
         }
-        $controller->exposeVarsAsGlobals();
-    }
 	
-	//Template management
-	
+	//Template management	
 	private $sections = array();
 	
-    public function startSection($name) {
-        ob_start();
-		$this->sections[$name]="";
-    }
+        public function startSection($name) {
+                ob_start();
+                $this->sections[$name]="";
+        }
 
-    public function endSection($name) {
-		//$this->sections[$name]=utf8_decode( ob_get_clean() );       
-		$this->sections[$name]= ob_get_clean() ;       
-    }
+        public function endSection($name) {
+                //$this->sections[$name]=utf8_decode( ob_get_clean() );       
+                $this->sections[$name]= ob_get_clean() ;       
+        }
 	
 	public function addSection($name, $content) {
 		$this->sections[$name]=$content;
@@ -217,16 +214,15 @@ class App {
 	}
 	
 	public function getSection($name) {
-        return $this->sections[$name];
-    }
+	        return $this->sections[$name];
+        }
 	
 	public function renderAsTemplate($view, $params = array() ) {		
 		$this->render( $view, array_merge($this->sections, $params) );
 	}
 
 	//Environment
-	public function printEnv() {
-		
+	public function printEnv() {		
 		if( Config::get('env') !=  "PROD" ) {
 			?>
 			<span style="background: #000; color: #fff; padding: 5px; font-size: 20px; position: absolute; top:0; left:50%;" >

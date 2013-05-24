@@ -59,7 +59,7 @@ class JSEnqueuer extends Enqueuer {
 
     public function flush() {
         echo "<pre>";
-        var_dump($this->getAll());
+        
         foreach( $this->getAll() as $r ) {
             if( $this->_scripts[$r]["type"] == "script" ) {
                 echo "<script>" . $this->_scripts[$r]["code"] . "</script>\n";
