@@ -5,8 +5,6 @@
 	<meta name="description" content="<?=$description; ?>" />
 
 <?php
-
-//$enq = CssEnqueuer::getInstance();
-
-?>
-<!-- End App Header -->
+$enq = \baobab\CssEnqueuer::getInstance();
+$enq->flush();
+//var_dump($enq);

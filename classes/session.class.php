@@ -4,24 +4,24 @@ namespace baobab;
 
 class Session {
 
-	protected static $instance;
-	protected $data;
+	protected static $_instance;
+	protected $_data;
 
     private function __construct() {
         session_name("global");
         @session_start();
-        $this->data = &$_SESSION;
+        $this->_data = &$_SESSION;
     }
     
     public static function getInstance() {
-        if(!self::$instance) {
-            self::$instance = new self();
+        if(!self::$_instance) {
+            self::$_instance = new self();
         }
-        return self::$instance;
+        return self::$_instance;
     }
     
     public function get($var, $default=null) {            
-        $value = isset($this->data[$var]) ? $this->data[$var] : null;                
+        $value = isset($this->_data[$var]) ? $this->_data[$var] : null;
         $object = @unserialize($value);
         if( $object ) {
             $value = $object;
@@ -33,11 +33,11 @@ class Session {
         if (is_object($value) || is_array($value)) {
             $value = serialize($value);
         }
-        $this->data[$var]=$value;
+        $this->_data[$var]=$value;
     }
     
     public function drop($var) {
-        unset($this->data[$var]);
+        unset($this->_data[$var]);
     }
 }
 

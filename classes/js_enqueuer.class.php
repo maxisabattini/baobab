@@ -2,17 +2,20 @@
 
 namespace baobab;
 
+require_once "enqueuer.class.php";
+
 class JSEnqueuer extends Enqueuer {
 
     private $_scripts = array();
+    private $_files = array();
 
-    private static $instance = null;
+    private static $_instance = null;
 
     public static function getInstance() {
-        if( ! self::$instance ) {
-            self::$instance = new self();
+        if( ! self::$_instance ) {
+            self::$_instance = new self();
         }
-        return self::$instance;
+        return self::$_instance;
     }
 
     public function addFile($file, $name="", $depend = array() ) {
@@ -58,8 +61,6 @@ class JSEnqueuer extends Enqueuer {
     }
 
     public function flush() {
-        echo "<pre>";
-        
         foreach( $this->getAll() as $r ) {
             if( $this->_scripts[$r]["type"] == "script" ) {
                 echo "<script>" . $this->_scripts[$r]["code"] . "</script>\n";

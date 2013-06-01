@@ -5,7 +5,7 @@ namespace baobab;
 class Config {
 
 	private static $_instance;	
-	private $settings;
+	private $_settings;
 
 	public static function getInstance() {
 		if ( ! isset(self::$_instance)) {
@@ -109,11 +109,11 @@ class Config {
 	}
 
 	private function _set($name, $value) {
-		$this->settings[$name] = $value;
+		$this->_settings[$name] = $value;
 	}
 
 	private function _get($name, $default) {
-		if (!isset($this->settings[$name])) return $default;
-		return $this->settings[$name]; 
+		if (!isset($this->_settings[$name])) return $default;
+		return $this->_settings[$name];
 	}
 }

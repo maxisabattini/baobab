@@ -29,6 +29,7 @@ class Enqueuer {
                 }
             }
         }
+
         return $list->getAsArray();
     }
 
@@ -67,18 +68,11 @@ class DependencyList {
 
     public function getAsArray() {
         $array=array();
-
-        $iterator = $this->_head;
-        if( ! $iterator->next ) {
-              return $array;
-        } else {
-            $iterator=$iterator->next;
-        }
-
-        while( $iterator->next ) {
+        $iterator = &$this->_head;
+        do {
+            $iterator=&$iterator->next;
             $array[]=$iterator->data;
-            $iterator=$iterator->next;   
-        }
+        } while( $iterator->next );
 
         return $array;
     }

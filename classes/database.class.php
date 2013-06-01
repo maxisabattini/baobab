@@ -6,7 +6,6 @@ class Database {
 
     public static $_instances = array(); 
     private $_conn;
-    private $_stmt;
     private $_dsn;
     private $_query;
     private $_queryParams;
@@ -31,7 +30,7 @@ class Database {
 
         if( !$options ) {	//Retrieve default db info
 
-			$cfg = \baobab\Config::getInstance();
+			$cfg = Config::getInstance();
 
             $host 		= $cfg->get('db_host');
             $port		= $cfg->get('db_port');
@@ -122,7 +121,6 @@ class Database {
         if(!$this->_last_rs) {
             $this->query();
         }
-
         return $this->fetchObject($this->_last_rs, $class);
     }
 
@@ -172,9 +170,9 @@ class Database {
     }
 
 
-	protected function setErrorInfo($error_info, $trigger_error = E_USER_NOTICE) {
+	protected function setErrorInfo($error_info) {
 		$this->_errorInfo = $error_info;
-		//if ( in_array($trigger_error, array(E_USER_ERROR, E_USER_NOTICE, E_USER_WARNING)) )	trigger_error($error_info[2], $trigger_error);
+        Log::error("_DATABASE_:".$error_info);
 	}
 
 	public function getErrorInfo() {

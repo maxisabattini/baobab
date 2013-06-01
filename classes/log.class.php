@@ -11,31 +11,29 @@ class Log {
     const DEBUG = 4;
     const ALL = 100;
     
-    public static $level = 0;	
-    
+    public static $level = self::NONE;
+
     public static function error($message) {
-        if(self::$level > 0) {
-            error_log($message);
+        if(self::$level >= self::ERROR ) {
+            error_log("ERROR: ". $message);
         }
     }
     
     public static function warn($message) {
-        if(self::$level > 1 ){
-            error_log($message);
+        if(self::$level > self::WARN ){
+            error_log("WARN: " . $message);
         }
     }
     
     public static function info($message) {
-        if( self::$level > 2 ){
-            error_log($message);
+        if( self::$level > self::INFO ){
+            error_log("INFO: ". $message);
         }
     }
     
     public static function debug($message) {
-        if( self::$level > 2 ){
-            error_log($message);
-        }        
-    }    
+        if( self::$level > self::DEBUG ){
+            error_log("DEBUG: ". print_r($message, true));
+        }
+    }
 }
-
-
