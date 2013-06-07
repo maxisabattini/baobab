@@ -5,7 +5,7 @@ global $app;
 <head>
 
 <?php
-$enq = \baobab\CssEnqueuer::getInstance();
+$enq = \baobab\CssQueue::getInstance();
 $enq->addFile("//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css");
 ?>
 

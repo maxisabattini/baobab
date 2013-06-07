@@ -8,7 +8,6 @@ class Session {
 	protected $_data;
 
     private function __construct() {
-        session_name("global");
         @session_start();
         $this->_data = &$_SESSION;
     }

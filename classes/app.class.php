@@ -1,31 +1,45 @@
 <?php
 
 namespace baobab;
-
+require_once "config.class.php";
 require_once "log.class.php";
 require_once "controller.class.php";
-require_once "js_enqueuer.class.php";
-require_once "css_enqueuer.class.php";
+require_once "js_queue.class.php";
+require_once "css_queue.class.php";
 
 class App {
 
-	public $sitePath;
-	public $siteUrl;
-	
-	private $_path;
-	
-	private $_siteUrlParts= array();
-	
 	private function __construct() {
-	    $this->_path = dirname ( dirname(__FILE__) );
-	    $this->sitePath = dirname(dirname(dirname( $this->_path ) ) );
+	    $this->baoPath = dirname ( dirname(__FILE__) );
+	    $this->path = dirname(dirname(dirname( $this->baoPath ) ) );
 	}
-	
-	public function setSitePath($path) {    
-	    $this->sitePath = $path;
-	}	
-	
-	public function getSiteUrl() {
+
+    // Path
+
+    public $path;
+    public $baoPath;
+
+	public function setPath($path) {
+	    $this->path = $path;
+	}
+
+    // URL Management
+
+    public $url;
+
+    private $_siteUrlParts= array();
+
+    public function getBaseUrl() {
+        $url = $this->url;
+
+        $pf = "/index.php";
+        if(substr($url , -strlen($pf) ) === $pf) {
+            $url = substr($url, 0, -strlen($pf));
+        }
+        return $url;
+    }
+
+	public function getUrlParts() {
 		return $this->_siteUrlParts;
 	}
 	
@@ -39,7 +53,9 @@ class App {
 		}		
 		return $pageURL;
 	}
-	
+
+    // Page info
+
 	private $pageInfo = array();
 	
 	public function getPageInfo() {
@@ -70,7 +86,7 @@ class App {
 		$parts["query"]=(string) substr($uri, $pos+1);		//?adasd
 		$parts["fragment"]="";	//#adas    only with js
 		$this->_siteUrlParts = $parts;
-		$this->siteUrl = $this->makeUrl( array_merge($parts, array( "query" => "" ) ));
+		$this->url = $this->makeUrl( array_merge($parts, array( "query" => "" ) ));
 
 	    $pages = &$routes;
 	    
@@ -78,7 +94,7 @@ class App {
 		    $this->appInfo["*"]=$pages["*"];
 		}
 	    
-		$uri = $this->getSiteUrl();
+		$uri = $this->getUrlParts();
 		$request = $uri["query"];
 
         if( $pos = strpos( $request, "?") ) {
@@ -121,12 +137,12 @@ class App {
 		
 		$this->appInfo["page"]= &$this->pageInfo;
 		
-		$filePath = $this->sitePath . "/pages/" . $this->pageInfo["page"] . ".php";
+		$filePath = $this->path . "/pages/" . $this->pageInfo["page"] . ".php";
 		
 		//404 page
 		if( ! file_exists($filePath) ) {
 			Log::warn("_APP_: Page not found : $filePath");
-			$filePath = $this->sitePath . "/pages/404.php";
+			$filePath = $this->path . "/pages/404.php";
 			$this->pageInfo["page"]="404";
 		}
 		
@@ -145,7 +161,7 @@ class App {
 		}
 		
 		if( isset($this->pages[$page]) ) {	    
-		    $url = $this->siteUrl;
+		    $url = $this->url;
 		    
             $pf = "/index.php";		    		    
             if(substr($url , -strlen($pf) ) === $pf) {
@@ -156,17 +172,17 @@ class App {
 		} else {
 			$parts = explode(".", $page );
 			
-			return $this->siteUrl . "/" . implode("/", $parts) ;
+			return $this->url . "/" . implode("/", $parts) ;
 		}
 	}
-	
-	private static $_instance = null;
 
-	public static function getInstance() {		
-		if( ! self::$_instance ) {
-			self::$_instance = new self();
-		}	
-		return self::$_instance;
+    protected static $_instances = array();
+
+	public static function getInstance($name = 'default') {
+        if( ! isset(self::$_instances[$name]) ) {
+            self::$_instances[$name] = new self();
+        }
+        return self::$_instances[$name];
 	}
 		
 	public function render($view, $params = array()) {
@@ -181,16 +197,16 @@ class App {
 	
 		if ( $prefix == "app" ) {
 			//CORE
-			$viewFile = $this->_path . "/$view.php";
-			$controllerFile = $this->_path . "/controllers/$view.c.php";
+			$viewFile = $this->baoPath . "/$view.php";
+			$controllerFile = $this->baoPath . "/controllers/$view.c.php";
 		} else {
 			//PAGES
-			$viewFile = $this->sitePath . "/pages/$view.php";
-			$controllerFile = $this->sitePath . "/controllers/$view.c.php";
+			$viewFile = $this->path . "/pages/$view.php";
+			$controllerFile = $this->path . "/controllers/$view.c.php";
 			if( ! file_exists( $viewFile ) ) {
 				//MODULES
-				$viewFile = $this->sitePath . "/modules/$view.m.php";
-				$controllerFile = $this->sitePath . "/controllers/$view.mc.php";
+				$viewFile = $this->path . "/modules/$view.m.php";
+				$controllerFile = $this->path . "/controllers/$view.mc.php";
 			}
 		}
 		
@@ -211,8 +227,8 @@ class App {
 	}
 
 	public function loadController( $view , $params = array() ) {
-        $viewFile = $this->sitePath . "/$view.php";
-        $controllerFile = $this->sitePath . "/controllers/$view.c.php";
+        $viewFile = $this->path . "/$view.php";
+        $controllerFile = $this->path . "/controllers/$view.c.php";
         if ( file_exists( $controllerFile ) ) {
             require_once $controllerFile;
             $class = ucfirst($view);

@@ -5,7 +5,7 @@ global $app;
 <head>
 
 <?php
-$enq = \baobab\CssEnqueuer::getInstance();
+$enq = \baobab\CssQueue::getInstance();
 $enq->addFile("//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css");
 ?>
 
@@ -35,6 +35,21 @@ $enq->addFile("//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-c
     </div>
 </div>
 
+<?php
+$enq = \baobab\JSQueue::getInstance();
+$enq->addFile("http://code.jquery.com/jquery-1.10.0.js", "jquery");
+$enq->addFile("http://ajax.aspnetcdn.com/ajax/jquery.validate/1.9/jquery.validate.js", "", array("jquery"));
+
+$enq->beginCode();
+?>
+<script>
+    jQuery(document).ready(function(){
+        alert("Page Test loaded");
+    });
+</script>
+<?php
+$enq->endCode(null, array("jquery"));
+?>
 <?php $app->render("app.footer"); ?>
 </body>
 <html>

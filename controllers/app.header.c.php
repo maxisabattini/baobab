@@ -24,6 +24,5 @@ class AppHeaderController extends Controller {
 		$this->setVar("description" , $app->getInfo("page", "meta_description") );
 		
 		$this->setVar("charset", "UTF-8");
-		
 	}
 }

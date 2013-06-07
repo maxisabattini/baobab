@@ -5,6 +5,5 @@
 	<meta name="description" content="<?=$description; ?>" />
 
 <?php
-$enq = \baobab\CssEnqueuer::getInstance();
-$enq->flush();
-//var_dump($enq);
+$enq = \baobab\CssQueue::getInstance();
+$enq->flushPacked();

@@ -30,7 +30,7 @@ $routes = array(
 require_once "../../classes/app.class.php";
 
 $app = \baobab\App::getInstance();
-$app->setSitePath( dirname(__FILE__) );
+$app->setPath( dirname(__FILE__) );
 \baobab\Log::$level = \baobab\Log::ALL;
 $app->route($routes);
 
