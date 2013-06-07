@@ -107,7 +107,7 @@ class JSQueue extends Queue {
             $jShrinkPath = $cfg->get("jshrin_path", $app->baoPath . "/libs/JShrink/src/JShrink/Minifier.php" );
             if(file_exists($jShrinkPath)){
                 require_once $jShrinkPath;
-                $code = JShrink\Minifier::minify($code, array('flaggedComments' => false));
+                $code = \JShrink\Minifier::minify($code, array('flaggedComments' => false));
             } else {
                 Log::warn("Can not load minifier.php");
             }
