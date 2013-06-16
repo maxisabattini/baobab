@@ -37,10 +37,10 @@ class CssQueue extends Queue {
         $cfg = Config::getInstance();
         $app = App::getInstance();
 
-        $path = $cfg->get("statics_paths", $app->path . "/temp" );
+        $path = $cfg->get("statics_paths", $app->getPath() . "/temp" );
         $path = $path . "/all.$hash.css";
 
-        $appUrl = $app->getBaseUrl();
+        $appUrl = $app->getUrlBase();
         $url = $cfg->get("statics_url", $appUrl . "/temp" );
         $url = $url . "/all.$hash.css";
 
@@ -61,7 +61,12 @@ class CssQueue extends Queue {
             /* remove tabs, spaces, newlines, etc. */
             $code = str_replace(array("\r\n", "\r", "\n", "\t", '  ', '    ', '    '), '', $code);
 
-            file_put_contents( $path, $code);
+            //file_put_contents( $path, $code);
+            if( !file_put_contents( $path, $code) ) {
+                Log::warn("Can not write packed js");
+                return $this->flush();
+            }
+
         }
 
         $md5 = md5_file( $path );

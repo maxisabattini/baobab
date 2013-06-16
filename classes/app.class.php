@@ -7,9 +7,11 @@ require_once "controller.class.php";
 require_once "js_queue.class.php";
 require_once "css_queue.class.php";
 
-class App {
+if( ! defined( "BAOBAB_PATH" ) ) {
+    define( "BAOBAB_PATH", dirname ( dirname(__FILE__) ) );
+}
 
-    protected static $_instances = array();
+class App {
 
     public static function getInstance($name = 'default') {
         if( ! isset(self::$_instances[$name]) ) {
@@ -18,29 +20,24 @@ class App {
         return self::$_instances[$name];
     }
 
-    private function __construct() {
-        $this->baoPath = dirname ( dirname(__FILE__) );
-        $this->path = dirname(dirname(dirname( $this->baoPath ) ) );
-        $this->parseCurrentUrl();
-    }
-
     // Paths
 
-    public $baoPath;
-    public $path;
+    public function getPath() {
+        return $this->_path;
+    }
 
     public function setPath($path) {
-        $this->path = $path;
+        $this->_path = $path;
     }
 
     // URL Management
 
-    public $url;
+    public function getUrl() {
+        return $this->_url;
+    }
 
-    private $_siteUrlParts= array();
-
-    public function getBaseUrl() {
-        $url = $this->url;
+    public function getUrlBase() {
+        $url = $this->_url;
 
         $pf = "/index.php";
         if(substr($url , -strlen($pf) ) === $pf) {
@@ -53,72 +50,8 @@ class App {
         return $this->_siteUrlParts;
     }
 
-    public function makeUrl($parts) {
-        $pageURL = $parts["scheme"] . "://" . $parts["host"] . $parts["path"] .     $parts["query"];
-        if($parts["port"]!=80) {
-            $pageURL .= ":" . $parts["port"];
-        }
-        if( substr( $pageURL, -1) === "/" ) {
-            $pageURL = substr( $pageURL, 0, strlen($pageURL) - 1 );
-        }
-        return $pageURL;
-    }
+    // Pages
 
-    protected function parseCurrentUrl(){
-        $parts=array();
-        $parts["scheme"]='http';
-        if ( isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") {
-            $parts["scheme"]='https';
-        }
-        $parts["host"]=$_SERVER['HTTP_HOST'];
-        $parts["port"]=$_SERVER["SERVER_PORT"];
-
-        $self = $_SERVER['PHP_SELF'];
-        $uri = $_SERVER['REQUEST_URI'];
-        $pos = strrpos($self, "/");
-        $parts["user"]="";
-        $parts["pass"]="";
-        $parts["path"]=substr($self, 0, $pos+1);
-        $parts["query"]=(string) substr($uri, $pos+1);      //?adasd
-        $parts["fragment"]="";  //#adas    only with js
-        $this->_siteUrlParts = $parts;
-        $this->url = $this->makeUrl( array_merge($parts, array( "query" => "" ) ));
-    }
-
-    public function getPageUrl($page) {
-        if(!$page) {
-            $page=".";
-        }
-
-        if( isset($this->pages[$page]) ) {
-            $url = $this->url;
-
-            $pf = "/index.php";
-            if(substr($url , -strlen($pf) ) === $pf) {
-                $url = substr($url, 0, -strlen($pf));
-            }
-
-            return $url . "$pf/" . $this->pages[$page];
-        } else {
-            $parts = explode(".", $page );
-
-            return $this->url . "/" . implode("/", $parts) ;
-        }
-    }
-
-    // Page info
-
-    private $pageInfo = array();
-
-    public function getPageInfo() {
-        return $this->pageInfo;
-    }
-
-    private $appInfo = array();	
-    public function getInfo($section, $key, $default=false){
-        return isset( $this->appInfo[$section][$key] ) ? $this->appInfo[$section][$key] : $default;
-    }
-    
     public function route( $routes ) {
 
         $pages = &$routes;
@@ -170,12 +103,12 @@ class App {
 
         $this->appInfo["page"]= &$this->pageInfo;
 
-        $filePath = $this->path . "/pages/" . $this->pageInfo["page"] . ".php";
+        $filePath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
 
         //404 page
         if( ! file_exists($filePath) ) {
             Log::warn("_APP_: Page not found : $filePath");
-            $filePath = $this->path . "/pages/404.php";
+            $filePath = $this->_path . "/pages/404.php";
             $this->pageInfo["page"]="404";
         }
 
@@ -188,61 +121,79 @@ class App {
         }
 	}
 
-	public function render($view, $params = array()) {
-	
-		$prefix="";
-		$name=$view;
-		$class = ucfirst($name);
-		if( strpos($view, ".") !== false ) {
-			list($prefix, $name) = explode(".", $view);
-			$class = ucfirst($prefix) . ucfirst($name);
-		}
-	
-		if ( $prefix == "app" ) {
-			//CORE
-			$viewFile = $this->baoPath . "/$view.php";
-			$controllerFile = $this->baoPath . "/controllers/$view.c.php";
-		} else {
-			//PAGES
-			$viewFile = $this->path . "/pages/$view.php";
-			$controllerFile = $this->path . "/controllers/$view.c.php";
-			if( ! file_exists( $viewFile ) ) {
-				//MODULES
-				$viewFile = $this->path . "/modules/$view.m.php";
-				$controllerFile = $this->path . "/controllers/$view.mc.php";
-			}
-		}
-		
-		if( ! file_exists( $viewFile ) ) {
-			Log::error("_APP_: can not load view : $view");
-			return;
-		}
+    public function info($section, $key, $default=false){
+        return isset( $this->appInfo[$section][$key] ) ? $this->appInfo[$section][$key] : $default;
+    }
 
-		if ( file_exists( $controllerFile ) ) {
-			require_once $controllerFile;
-			$className = "\\baobab\\$class"."Controller";
-			$controller = new $className( $viewFile, $params );
-		} else {
-            Log::warn("_APP_: can not load controller : $controllerFile");
-			$controller = new Controller( $viewFile, $params );
-		}
-		$controller->render();
-	}
+    public function pageInfo() {
+        return $this->pageInfo;
+    }
 
-	public function loadController( $view , $params = array() ) {
-        $viewFile = $this->path . "/$view.php";
-        $controllerFile = $this->path . "/controllers/$view.c.php";
+    public function pageUrl($page) {
+        if(!$page) {
+            $page=".";
+        }
+
+        if( isset($this->pages[$page]) ) {
+            $url = $this->_url;
+
+            $pf = "/index.php";
+            if(substr($url , -strlen($pf) ) === $pf) {
+                $url = substr($url, 0, -strlen($pf));
+            }
+
+            return $url . "$pf/" . $this->pages[$page];
+        } else {
+            $parts = explode(".", $page );
+
+            return $this->_url . "/" . implode("/", $parts) ;
+        }
+    }
+
+
+    // Controllers & Views
+
+    public function render($view, $params = array()) {
+
+        $prefix="";
+        $name=$view;
+        $class = ucfirst($name);
+        if( strpos($view, ".") !== false ) {
+            list($prefix, $name) = explode(".", $view);
+            $class = ucfirst($prefix) . ucfirst($name);
+        }
+
+        if ( $prefix == "app" ) {
+            //CORE
+            $viewFile = BAOBAB_PATH  . "/$view.php";
+            $controllerFile = BAOBAB_PATH . "/controllers/$view.c.php";
+        } else {
+            //PAGES
+            $viewFile = $this->_path . "/pages/$view.php";
+            $controllerFile = $this->_path . "/controllers/$view.c.php";
+            if( ! file_exists( $viewFile ) ) {
+                //MODULES
+                $viewFile = $this->_path . "/modules/$view.m.php";
+                $controllerFile = $this->_path . "/controllers/$view.mc.php";
+            }
+        }
+
+        if( ! file_exists( $viewFile ) ) {
+            Log::error("_APP_: can not load view : $view");
+            return;
+        }
+
         if ( file_exists( $controllerFile ) ) {
             require_once $controllerFile;
-            $class = ucfirst($view);
             $className = "\\baobab\\$class"."Controller";
             $controller = new $className( $viewFile, $params );
         } else {
+            Log::warn("_APP_: can not load controller : $controllerFile");
             $controller = new Controller( $viewFile, $params );
         }
-        $controller->exposeVarsAsGlobals();
+        $controller->render();
     }
-	
+
 	// Template management
 
 	private $_sections = array();
@@ -271,4 +222,94 @@ class App {
 	public function renderAsTemplate($view, $params = array() ) {		
 		$this->render( $view, array_merge($this->_sections, $params) );
 	}
+
+    // Private members
+
+    protected static $_instances = array();
+    private $_path;
+    private $_url;
+    private $_siteUrlParts= array();
+    private $pageInfo = array();
+    private $appInfo = array();
+
+    private function __construct() {
+        //$this->baoPath = dirname ( dirname(__FILE__) );
+        //$this->path = dirname(dirname(dirname( $this->baoPath ) ) );
+
+        $baobabPath = dirname ( dirname(__FILE__) );
+        $this->_path = dirname(dirname(dirname( $baobabPath ) ) );
+
+
+        $this->_siteUrlParts = new UrlParts();
+        $this->_url = $this->_siteUrlParts->toString();
+
+        //$this->makeUrl( array_merge($parts, array( "query" => "" ) ));
+        //$this->parseCurrentUrl();
+    }
+
+    protected function loadController( $view , $params = array() ) {
+        $viewFile = $this->_path . "/$view.php";
+        $controllerFile = $this->_path . "/controllers/$view.c.php";
+        if ( file_exists( $controllerFile ) ) {
+            require_once $controllerFile;
+            $class = ucfirst($view);
+            $className = "\\baobab\\$class"."Controller";
+            $controller = new $className( $viewFile, $params );
+        } else {
+            $controller = new Controller( $viewFile, $params );
+        }
+        $controller->exposeVarsAsGlobals();
+    }
+
+
+}
+
+class UrlParts implements \ArrayAccess {
+
+    private $_container = array();
+
+    public function __construct() {
+        $this->_container["scheme"]='http';
+        if ( isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") {
+            $this->_container["scheme"]='https';
+        }
+        $this->_container["host"]=$_SERVER['HTTP_HOST'];
+        $this->_container["port"]=$_SERVER["SERVER_PORT"];
+
+        $self = $_SERVER['PHP_SELF'];
+        $uri = $_SERVER['REQUEST_URI'];
+        $pos = strrpos($self, "/");
+        $this->_container["user"]="";
+        $this->_container["pass"]="";
+        $this->_container["path"]=substr($self, 0, $pos+1);
+        $this->_container["query"]=(string) substr($uri, $pos+1);      //?adasd
+        $this->_container["fragment"]="";  //#adas    only with js
+    }
+
+    public function toString() {
+        $pageURL = $this->_container["scheme"]."://".$this->_container["host"].$this->_container["path"].$this->_container["query"];
+        if($this->_container["port"]!=80) {
+            $pageURL .= ":" . $this->_container["port"];
+        }
+        if( substr( $pageURL, -1) === "/" ) {
+            $pageURL = substr( $pageURL, 0, strlen($pageURL) - 1 );
+        }
+        return $pageURL;
+    }
+
+    public function offsetSet($offset, $value) {
+        $this->_container[$offset] = $value;
+    }
+
+    public function offsetExists($offset) {
+        return isset($this->_container[$offset]);
+    }
+
+    public function offsetUnset($offset) {
+        unset($this->_container[$offset]);
+    }
+
+    public function offsetGet($offset) {
+        return isset($this->_container[$offset]) ? $this->_container[$offset] : null;
+    }
 }

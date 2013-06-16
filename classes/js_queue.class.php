@@ -88,10 +88,10 @@ class JSQueue extends Queue {
         $cfg = Config::getInstance();
         $app = App::getInstance();
 
-        $path = $cfg->get("statics_paths", $app->path . "/temp" );
+        $path = $cfg->get("statics_paths", $app->getPath() . "/temp" );
         $path = $path . "/all.$hash.js";
 
-        $appUrl = $app->getBaseUrl();
+        $appUrl = $app->getUrlBase();
         $url = $cfg->get("statics_url", $appUrl . "/temp" );
         $url = $url . "/all.$hash.js";
 
@@ -111,7 +111,7 @@ class JSQueue extends Queue {
             }
 
             //Minifier
-            $jShrinkPath = $cfg->get("jshrin_path", $app->baoPath . "/libs/JShrink/src/JShrink/Minifier.php" );
+            $jShrinkPath = $cfg->get("jshrin_path", BAOBAB_PATH . "/libs/JShrink/src/JShrink/Minifier.php" );
             if(file_exists($jShrinkPath)){
                 require_once $jShrinkPath;
                 $code = \JShrink\Minifier::minify($code, array('flaggedComments' => false));
@@ -119,11 +119,13 @@ class JSQueue extends Queue {
                 Log::warn("Can not load minifier.php");
             }
 
-            file_put_contents( $path, $code);
+            if( !file_put_contents( $path, $code) ) {
+                Log::warn("Can not write packed js");
+                return $this->flush();
+            };
         }
 
         $md5 = md5_file( $path );
         echo "<script src='".$url."?".$md5."'></script>\n";
     }
-
 }
