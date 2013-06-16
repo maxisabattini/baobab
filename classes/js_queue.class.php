@@ -31,7 +31,6 @@ class JSQueue extends Queue {
 
     public function addScript($script, $name="", $depend = array() ) {
         if(!$name) {
-            //$name = md5(time());
             $name = md5($script);
         }
         $this->_scripts[$name]= array(
@@ -75,10 +74,14 @@ class JSQueue extends Queue {
 
         $all = $this->getAll();
 
+        Log::debug($all);
+
         $allReal = array();
         foreach( $all as $r ) {
             $allReal[]=$this->_scripts[$r]["code"];
         }
+
+        //Log::debug($all);
 
         $hash = md5( implode("",$allReal) );
 
@@ -97,7 +100,11 @@ class JSQueue extends Queue {
             $code = "";
             foreach( $all as $r ) {
                 if( $this->_scripts[$r]["type"] == "script" ) {
-                    $code .= $this->_scripts[$r]["code"];
+                    $content = $this->_scripts[$r]["code"];
+                    $content = preg_replace("/\<script[^>]*\>/", "", $content);
+                    $content = preg_replace("/\<\/script\>/", "", $content);
+                    $code .= $content;
+                    //$code .= $this->_scripts[$r]["code"];
                 } else {
                     $code .= file_get_contents($this->_scripts[$r]["code"]);
                 }

@@ -9,19 +9,29 @@ require_once "css_queue.class.php";
 
 class App {
 
-	private function __construct() {
-	    $this->baoPath = dirname ( dirname(__FILE__) );
-	    $this->path = dirname(dirname(dirname( $this->baoPath ) ) );
-	}
+    protected static $_instances = array();
 
-    // Path
+    public static function getInstance($name = 'default') {
+        if( ! isset(self::$_instances[$name]) ) {
+            self::$_instances[$name] = new self();
+        }
+        return self::$_instances[$name];
+    }
 
-    public $path;
+    private function __construct() {
+        $this->baoPath = dirname ( dirname(__FILE__) );
+        $this->path = dirname(dirname(dirname( $this->baoPath ) ) );
+        $this->parseCurrentUrl();
+    }
+
+    // Paths
+
     public $baoPath;
+    public $path;
 
-	public function setPath($path) {
-	    $this->path = $path;
-	}
+    public function setPath($path) {
+        $this->path = $path;
+    }
 
     // URL Management
 
@@ -39,152 +49,145 @@ class App {
         return $url;
     }
 
-	public function getUrlParts() {
-		return $this->_siteUrlParts;
-	}
-	
-	public function makeUrl($parts) {
-		$pageURL = $parts["scheme"] . "://" . $parts["host"] . $parts["path"] . $parts["query"];		
-		if($parts["port"]!=80) {
-			$pageURL .= ":" . $parts["port"];
-		}		
-		if( substr( $pageURL, -1) === "/" ) {
-			$pageURL = substr( $pageURL, 0, strlen($pageURL) - 1 );
-		}		
-		return $pageURL;
-	}
+    public function getUrlParts() {
+        return $this->_siteUrlParts;
+    }
+
+    public function makeUrl($parts) {
+        $pageURL = $parts["scheme"] . "://" . $parts["host"] . $parts["path"] .     $parts["query"];
+        if($parts["port"]!=80) {
+            $pageURL .= ":" . $parts["port"];
+        }
+        if( substr( $pageURL, -1) === "/" ) {
+            $pageURL = substr( $pageURL, 0, strlen($pageURL) - 1 );
+        }
+        return $pageURL;
+    }
+
+    protected function parseCurrentUrl(){
+        $parts=array();
+        $parts["scheme"]='http';
+        if ( isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") {
+            $parts["scheme"]='https';
+        }
+        $parts["host"]=$_SERVER['HTTP_HOST'];
+        $parts["port"]=$_SERVER["SERVER_PORT"];
+
+        $self = $_SERVER['PHP_SELF'];
+        $uri = $_SERVER['REQUEST_URI'];
+        $pos = strrpos($self, "/");
+        $parts["user"]="";
+        $parts["pass"]="";
+        $parts["path"]=substr($self, 0, $pos+1);
+        $parts["query"]=(string) substr($uri, $pos+1);      //?adasd
+        $parts["fragment"]="";  //#adas    only with js
+        $this->_siteUrlParts = $parts;
+        $this->url = $this->makeUrl( array_merge($parts, array( "query" => "" ) ));
+    }
+
+    public function getPageUrl($page) {
+        if(!$page) {
+            $page=".";
+        }
+
+        if( isset($this->pages[$page]) ) {
+            $url = $this->url;
+
+            $pf = "/index.php";
+            if(substr($url , -strlen($pf) ) === $pf) {
+                $url = substr($url, 0, -strlen($pf));
+            }
+
+            return $url . "$pf/" . $this->pages[$page];
+        } else {
+            $parts = explode(".", $page );
+
+            return $this->url . "/" . implode("/", $parts) ;
+        }
+    }
 
     // Page info
 
-	private $pageInfo = array();
-	
-	public function getPageInfo() {
-		return $this->pageInfo;
-	}
-	
-	private $appInfo = array();	
-	public function getInfo($section, $key, $default=false){
-	    return isset( $this->appInfo[$section][$key] ) ? $this->appInfo[$section][$key] : $default;
-	}
-	
-	public function route( $routes ) {
-	    
-		$parts=array();		
-		$parts["scheme"]='http';
-		if ( isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") {			
-			$parts["scheme"]='https';	
-		}		
-		$parts["host"]=$_SERVER['HTTP_HOST'];		
-		$parts["port"]=$_SERVER["SERVER_PORT"];		
-		
-		$self = $_SERVER['PHP_SELF'];
-		$uri = $_SERVER['REQUEST_URI'];
-		$pos = strrpos($self, "/");
-		$parts["user"]="";
-		$parts["pass"]="";
-		$parts["path"]=substr($self, 0, $pos+1);
-		$parts["query"]=(string) substr($uri, $pos+1);		//?adasd
-		$parts["fragment"]="";	//#adas    only with js
-		$this->_siteUrlParts = $parts;
-		$this->url = $this->makeUrl( array_merge($parts, array( "query" => "" ) ));
+    private $pageInfo = array();
 
-	    $pages = &$routes;
-	    
-	    if( isset( $pages["*"] ) ) {		    
-		    $this->appInfo["*"]=$pages["*"];
-		}
-	    
-		$uri = $this->getUrlParts();
-		$request = $uri["query"];
+    public function getPageInfo() {
+        return $this->pageInfo;
+    }
+
+    private $appInfo = array();	
+    public function getInfo($section, $key, $default=false){
+        return isset( $this->appInfo[$section][$key] ) ? $this->appInfo[$section][$key] : $default;
+    }
+    
+    public function route( $routes ) {
+
+        $pages = &$routes;
+
+        if( isset( $pages["*"] ) ) {
+            $this->appInfo["*"]=$pages["*"];
+        }
+
+        $uri = $this->getUrlParts();
+        $request = $uri["query"];
 
         if( $pos = strpos( $request, "?") ) {
             $request = substr($request, 0, $pos);
         }
 
-		if( substr( $request, -1) === "/" ) {
-			$request = substr( $request, 0, strlen($request) - 1 );
-		}	
-		
-		//Set the pages "page.real" => "something"
-		foreach($pages as $k => $v) {
-			if( isset($v["page"]) ) {
-				$this->pages[ $v["page"] ] = $k;
-			}			
-		}	
-		
-		if(!$request) {
-			$request=".";
-		}
-		
-		if( isset( $pages[$request] ) ) {
-			$this->pageInfo = $pages[$request];			
-		}		
-		
-		if( ! isset( $this->pageInfo["page"] ) ) {	//no rewrite for this page
-			$parts = explode("/", $request );		
-			$view = implode(".", $parts);
-			
-			//Reasign pageInfo
-			if( isset($this->pages[$view]) ) {
-				$this->pageInfo = $pages[ $this->pages[$view] ];
-			}
-			
-			//By default pageInfo
-			if( ! isset( $this->pageInfo["page"] ) ) {
-                $this->pageInfo["page"] = $view;
-			}
-		}
-		
-		$this->appInfo["page"]= &$this->pageInfo;
-		
-		$filePath = $this->path . "/pages/" . $this->pageInfo["page"] . ".php";
-		
-		//404 page
-		if( ! file_exists($filePath) ) {
-			Log::warn("_APP_: Page not found : $filePath");
-			$filePath = $this->path . "/pages/404.php";
-			$this->pageInfo["page"]="404";
-		}
-		
-		if( file_exists( $filePath ) ) {			
-			$this->loadController( $this->pageInfo["page"], $this->pageInfo );
-			include $filePath;	
-		} else {
-			header('HTTP/1.0 404 Not Found');
-			die;
-		}
-	}
-	
-	public function getPageUrl($page) {
-		if(!$page) {
-			$page=".";
-		}
-		
-		if( isset($this->pages[$page]) ) {	    
-		    $url = $this->url;
-		    
-            $pf = "/index.php";		    		    
-            if(substr($url , -strlen($pf) ) === $pf) {
-                $url = substr($url, 0, -strlen($pf));
-            }
+        if( substr( $request, -1) === "/" ) {
+            $request = substr( $request, 0, strlen($request) - 1 );
+        }	
 
-			return $url . "$pf/" . $this->pages[$page];
-		} else {
-			$parts = explode(".", $page );
-			
-			return $this->url . "/" . implode("/", $parts) ;
-		}
-	}
+        //Set the pages "page.real" => "something"
+        foreach($pages as $k => $v) {
+            if( isset($v["page"]) ) {
+                $this->pages[ $v["page"] ] = $k;
+            }			
+        }	
 
-    protected static $_instances = array();
-
-	public static function getInstance($name = 'default') {
-        if( ! isset(self::$_instances[$name]) ) {
-            self::$_instances[$name] = new self();
+        if(!$request) {
+            $request=".";
         }
-        return self::$_instances[$name];
+
+        if( isset( $pages[$request] ) ) {
+            $this->pageInfo = $pages[$request];			
+        }		
+
+        if( ! isset( $this->pageInfo["page"] ) ) {	//no rewrite for this page
+            $parts = explode("/", $request );		
+            $view = implode(".", $parts);
+            
+            //Reasign pageInfo
+            if( isset($this->pages[$view]) ) {
+                $this->pageInfo = $pages[ $this->pages[$view] ];
+            }
+            
+            //By default pageInfo
+            if( ! isset( $this->pageInfo["page"] ) ) {
+                $this->pageInfo["page"] = $view;
+            }
+        }
+
+        $this->appInfo["page"]= &$this->pageInfo;
+
+        $filePath = $this->path . "/pages/" . $this->pageInfo["page"] . ".php";
+
+        //404 page
+        if( ! file_exists($filePath) ) {
+            Log::warn("_APP_: Page not found : $filePath");
+            $filePath = $this->path . "/pages/404.php";
+            $this->pageInfo["page"]="404";
+        }
+
+        if( file_exists( $filePath ) ) {			
+            $this->loadController( $this->pageInfo["page"], $this->pageInfo );
+            include $filePath;	
+        } else {
+            header('HTTP/1.0 404 Not Found');
+            die;
+        }
 	}
-		
+
 	public function render($view, $params = array()) {
 	
 		$prefix="";
@@ -240,7 +243,8 @@ class App {
         $controller->exposeVarsAsGlobals();
     }
 	
-	//Template management	
+	// Template management
+
 	private $_sections = array();
 	
     public function startSection($name) {
