@@ -74,14 +74,10 @@ class JSQueue extends Queue {
 
         $all = $this->getAll();
 
-        Log::debug($all);
-
         $allReal = array();
         foreach( $all as $r ) {
             $allReal[]=$this->_scripts[$r]["code"];
         }
-
-        //Log::debug($all);
 
         $hash = md5( implode("",$allReal) );
 

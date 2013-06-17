@@ -203,15 +203,19 @@ class OutWeb {
         <html>
         <head>
             <title><?=$string?></title>
+            <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet">
         </head>
         <body>
+        <div class="container">
         <h1><?=$string?></h1>
-        <br>
+        <hr>
         <?php
     }
 
     public function outFooter(){
         ?>
+        </div>
+        <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js"></script>
         </body>
         </html>
         <?php
@@ -234,25 +238,25 @@ class OutWeb {
     public function outLine($string, $args=array(), $mode="none"){
         switch( strtolower(trim($mode))) {
             case "error":
-                print "<span style='color:red'>";
+                print "<p class='error'><i class='icon-circle-arrow-right'></i>&nbsp;";
                 break;
             case "warn":
-                print "<span style='color:orange'>";
+                print "<p class='warning'><i class='icon-circle-arrow-right'></i>&nbsp;";
                 break;
             case "info":
-                print "<span style='color:#ffffe0'>";
+                print "<p class='info'><i class='icon-circle-arrow-right'></i>&nbsp;";
                 break;
             default:
+                print "<p ><i class='icon-circle-arrow-right'></i>&nbsp;";
                 break;
         }
         $this->out($string, $args);
-        print "</span>";
-        print "<br>";
+        print "</p>";
     }
 
     public function outParagraph($string, $args=array()){
-        print "<p>";
+        print '<div class="alert alert-info">';
         $this->out($string, $args);
-        print "</p>";
+        print '</div>';
     }
 }
