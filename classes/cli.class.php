@@ -22,6 +22,9 @@ class Cli {
         } else {
             $this->_out = new OutWeb();
         }
+        if($this->getParam("silent")) {
+			$this->_silent=true;
+		}
     }
 
     protected function getParam($name) {
@@ -68,6 +71,24 @@ class Cli {
             $this->_out->outParagraph($string, $args);
         }
     }
+    
+    public function outBool($condition, $string, $args=array()){
+        if(!$this->_silent) {
+            $this->_out->outBool($condition, $string, $args);
+        }
+    }    
+
+    public function outObject($obj) {
+        if(!$this->_silent) {
+            $this->_out->outObject($obj);
+        }
+    }
+
+    public function outObjectList($obj) {
+        if(!$this->_silent) {
+            $this->_out->outObjectList($obj);
+        }
+    }
 
     public function execute(){
         if(!$this->_silent) {
@@ -96,7 +117,7 @@ class OutCmdLinux {
         print "\033[1m";
         $this->out("\n" . $string . "\n" );
         print "\033[0m";
-        $this->out( str_pad("", strlen($string), "=" ) );
+        //$this->out( str_pad("", strlen($string), "=" ) );
         print "\n";
     }
 
@@ -141,11 +162,44 @@ class OutCmdLinux {
         print "\n";
     }
 
+    public function outBool($condition, $string, $args=array(), $mode="none"){
+        print "\033[0m";
+        if($condition) {
+			print "\033[36m[ OK  ] ";
+		} else {
+			print "\033[31m[ERROR] ";
+		}
+		print "\033[0m";
+        $this->out($string, $args);        
+        print "\n";
+    }
+
     public function outParagraph($string, $args=array()){
         print "\033[0m";
         print "\n\033[32m";
         $this->out($string, $args);
         print "\033[0m\n";
+    }
+
+
+    public function outObject($obj){
+        $vars = get_object_vars($obj);
+        $maxStr=0;
+        foreach($vars as $i => $v){
+            $maxStr = strlen($i) > $maxStr ? strlen($i) : $maxStr;
+        }
+        foreach($vars as $i => $v){
+            echo str_pad($i, $maxStr, " ", STR_PAD_LEFT) . ": " . $v . "\n";
+        }
+    }
+
+    public function outObjectList($objects){
+        $i=1;
+        foreach($objects as $o) {
+            echo str_pad( " $i.row ", 80, "*", STR_PAD_BOTH) . "\n";
+            $this->outObject($o);
+            $i++;
+        }
     }
 }
 
