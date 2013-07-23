@@ -33,6 +33,8 @@ class JSQueue extends Queue {
         if(!$name) {
             $name = md5($script);
         }
+        $script = preg_replace("/\<script[^>]*\>/", "", $script);
+        $script = preg_replace("/\<\/script\>/", "", $script);
         $this->_scripts[$name]= array(
             "type"  =>  "script",
             "code"  =>  $script,

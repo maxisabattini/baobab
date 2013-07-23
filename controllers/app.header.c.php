@@ -24,5 +24,8 @@ class AppHeaderController extends Controller {
 		$this->setVar("description" , $app->info("page", "meta_description") );
 		
 		$this->setVar("charset", "UTF-8");
+
+
+        $this->setVar("packed", Config::get('packedResources',false));
 	}
 }

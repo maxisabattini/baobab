@@ -3,9 +3,9 @@
 namespace baobab;
 
 class Controller {
-	private $params;
-	private $view;
-    private $vars = array();
+	protected $params;
+    protected $view;
+    protected $vars = array();
 
 	public function __construct( $view, $params = array() ) {
 		$this->params = $params;
@@ -36,7 +36,11 @@ class Controller {
 				}
 			}
 		}
-	
+
+        //Log::info( "Render: ". $this->view );
+        //Log::debug( $this->params );
+        //Log::debug( $this->vars );
+
         //Expose vars
         foreach( $this->params as $fieldName => $fieldValue ) {
             $$fieldName = $fieldValue;

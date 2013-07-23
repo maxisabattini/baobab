@@ -37,13 +37,7 @@ class App {
     }
 
     public function getUrlBase() {
-        $url = $this->_url;
-
-        $pf = "/index.php";
-        if(substr($url , -strlen($pf) ) === $pf) {
-            $url = substr($url, 0, -strlen($pf));
-        }
-        return $url;
+        return $this->_urlBase;
     }
 
     public function getUrlParts() {
@@ -113,8 +107,9 @@ class App {
         }
 
         if( file_exists( $filePath ) ) {			
-            $this->loadController( $this->pageInfo["page"], $this->pageInfo );
-            include $filePath;	
+            $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
+            $controller->render();
+
         } else {
             header('HTTP/1.0 404 Not Found');
             die;
@@ -133,15 +128,12 @@ class App {
         if(!$page) {
             $page=".";
         }
-
         if( isset($this->pages[$page]) ) {
-            $url = $this->_url;
-
-            $pf = "/index.php";
-            if(substr($url , -strlen($pf) ) === $pf) {
-                $url = substr($url, 0, -strlen($pf));
+            $url = $this->_urlBase;
+            $pf="";
+            if( ! $this->info("*", "rewrite", false) ) {
+                $pf="/index.php";
             }
-
             return $url . "$pf/" . $this->pages[$page];
         } else {
             $parts = explode(".", $page );
@@ -163,10 +155,12 @@ class App {
             $class = ucfirst($prefix) . ucfirst($name);
         }
 
+        $namespace="";
         if ( $prefix == "app" ) {
             //CORE
             $viewFile = BAOBAB_PATH  . "/$view.php";
             $controllerFile = BAOBAB_PATH . "/controllers/$view.c.php";
+            $namespace="\\baobab";
         } else {
             //PAGES
             $viewFile = $this->_path . "/pages/$view.php";
@@ -185,12 +179,15 @@ class App {
 
         if ( file_exists( $controllerFile ) ) {
             require_once $controllerFile;
-            $className = "\\baobab\\$class"."Controller";
+
+            $className = "$namespace\\$class"."Controller";
             $controller = new $className( $viewFile, $params );
         } else {
             Log::warn("_APP_: can not load controller : $controllerFile");
             $controller = new Controller( $viewFile, $params );
         }
+
+        Log::info("VIEW: " . $viewFile);
         $controller->render();
     }
 
@@ -228,14 +225,12 @@ class App {
     protected static $_instances = array();
     private $_path;
     private $_url;
+    private $_urlBase;
     private $_siteUrlParts= array();
     private $pageInfo = array();
     private $appInfo = array();
 
     private function __construct() {
-        //$this->baoPath = dirname ( dirname(__FILE__) );
-        //$this->path = dirname(dirname(dirname( $this->baoPath ) ) );
-
         $baobabPath = dirname ( dirname(__FILE__) );
         $this->_path = dirname(dirname(dirname( $baobabPath ) ) );
 
@@ -243,25 +238,29 @@ class App {
         $this->_siteUrlParts = new UrlParts();
         $this->_url = $this->_siteUrlParts->toString();
 
-        //$this->makeUrl( array_merge($parts, array( "query" => "" ) ));
-        //$this->parseCurrentUrl();
+        $path = $this->_siteUrlParts["path"];
+        if( $pos = strpos($path, "index.php") ){
+            $path = substr($path, 0, $pos);
+        }
+        $this->_urlBase = $this->_siteUrlParts->toString(array("path"=>$path, "query"=>"", "fragment"=>""));
     }
 
     protected function loadController( $view , $params = array() ) {
-        $viewFile = $this->_path . "/$view.php";
+        $viewFile = $this->_path . "/pages/$view.php";
         $controllerFile = $this->_path . "/controllers/$view.c.php";
         if ( file_exists( $controllerFile ) ) {
             require_once $controllerFile;
             $class = ucfirst($view);
-            $className = "\\baobab\\$class"."Controller";
+            $class = str_replace('-','_', $class);
+            $className = "\\$class"."Controller";
             $controller = new $className( $viewFile, $params );
         } else {
             $controller = new Controller( $viewFile, $params );
         }
-        $controller->exposeVarsAsGlobals();
+
+        return $controller;
+        //$controller->exposeVarsAsGlobals();
     }
-
-
 }
 
 class UrlParts implements \ArrayAccess {
@@ -269,6 +268,7 @@ class UrlParts implements \ArrayAccess {
     private $_container = array();
 
     public function __construct() {
+
         $this->_container["scheme"]='http';
         if ( isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") {
             $this->_container["scheme"]='https';
@@ -286,10 +286,12 @@ class UrlParts implements \ArrayAccess {
         $this->_container["fragment"]="";  //#adas    only with js
     }
 
-    public function toString() {
-        $pageURL = $this->_container["scheme"]."://".$this->_container["host"].$this->_container["path"].$this->_container["query"];
-        if($this->_container["port"]!=80) {
-            $pageURL .= ":" . $this->_container["port"];
+    public function toString($parts=array()) {
+        $container = array_merge($this->_container, $parts);
+
+        $pageURL = $container["scheme"]."://".$container["host"].$container["path"].$container["query"];
+        if($container["port"]!=80) {
+            $pageURL .= ":" . $container["port"];
         }
         if( substr( $pageURL, -1) === "/" ) {
             $pageURL = substr( $pageURL, 0, strlen($pageURL) - 1 );

@@ -6,4 +6,9 @@
 
 <?php
 $enq = \baobab\CssQueue::getInstance();
-$enq->flushPacked();
+if($packed) {
+    $enq->flushPacked();
+} else {
+    $enq->flush();
+}
+

@@ -183,7 +183,17 @@ class OutCmdLinux {
 
 
     public function outObject($obj){
-        $vars = get_object_vars($obj);
+		$var=false;
+		if( is_object($obj) ) {
+			$vars = get_object_vars($obj);			
+		}		
+		if( is_array($obj) ) {
+			$vars = $obj;			
+		}		
+		if(!$vars){
+			return;
+		}
+        
         $maxStr=0;
         foreach($vars as $i => $v){
             $maxStr = strlen($i) > $maxStr ? strlen($i) : $maxStr;

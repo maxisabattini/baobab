@@ -70,10 +70,14 @@ class DependencyList {
         $iterator = &$this->_head;
         do {
             $iterator=&$iterator->next;
-            $array[]=$iterator->data;
-        } while( $iterator->next );
+            if($iterator){
+                $array[]=$iterator->data;
+            } else {
+                break;
+            }
+        } while( true );
 
-        return  array_reverse($array);
+        return array_reverse($array);
     }
 }
 

@@ -9,5 +9,6 @@ class AppFooterController extends Controller {
 
 
 		//Init vars here
+        $this->setVar("packed", Config::get('packedResources',false));
 	}
 }

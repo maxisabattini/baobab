@@ -1,4 +1,9 @@
 <!-- App Footer -->
 <?php
 $enq = \baobab\JSQueue::getInstance();
-$enq->flushPacked();
+
+if($packed) {
+    $enq->flushPacked();
+} else {
+    $enq->flush();
+}
