@@ -100,20 +100,33 @@ class App {
         $filePath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
 
         //404 page
+
+        $view=true;
         if( ! file_exists($filePath) ) {
-            Log::warn("_APP_: Page not found : $filePath");
-            $filePath = $this->_path . "/pages/404.php";
+            Log::warn("_APP_: Page View not found : $filePath");
+            $view=false;
+        }
+
+        $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
+
+        Log::info("_APP_: Controller class " . get_class($controller) );
+
+        //No View and controller - Custom 404 page
+        if( ! $view && get_class($controller) == "Controller"  ) {
+
+            Log::info("_APP_: No View and controller");
             $this->pageInfo["page"]="404";
-        }
-
-        if( file_exists( $filePath ) ) {			
             $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
-            $controller->render();
 
-        } else {
-            header('HTTP/1.0 404 Not Found');
-            die;
+            //No custom 404
+            if( get_class($controller) == "Controller" ) {
+                Log::info("_APP_: No custom 404");
+                header('HTTP/1.0 404 Not Found');
+                die;
+            }
         }
+
+        $controller->render();
 	}
 
     public function info($section, $key, $default=false){
@@ -259,7 +272,6 @@ class App {
         }
 
         return $controller;
-        //$controller->exposeVarsAsGlobals();
     }
 }
 
