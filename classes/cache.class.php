@@ -12,8 +12,13 @@ class Cache {
     private function __construct() {
         if(class_exists('Memcache')){
             $this->_link = new \Memcache;
-            $this->_link->connect('localhost', 11211);
-            $this->_isEnabled = true;
+            if(! $this->_link->connect('localhost', 11211) ) {
+                Log::WARN("Can not connect to MEMCACHE service");
+            } else {
+                $this->_isEnabled = true;
+            }
+        } else {
+            Log::WARN("No exist MEMCACHE class");
         }
     }
     

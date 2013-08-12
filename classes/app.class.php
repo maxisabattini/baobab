@@ -48,6 +48,8 @@ class App {
 
     public function route( $routes ) {
 
+        Log::debug("Starting route");
+
         $pages = &$routes;
 
         if( isset( $pages["*"] ) ) {
@@ -75,6 +77,8 @@ class App {
         if(!$request) {
             $request=".";
         }
+
+        Log::debug("Request: $request");
 
         if( isset( $pages[$request] ) ) {
             $this->pageInfo = $pages[$request];			
@@ -106,8 +110,12 @@ class App {
             $this->pageInfo["page"]="404";
         }
 
-        if( file_exists( $filePath ) ) {			
+        if( file_exists( $filePath ) ) {
+
             $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
+
+            Log::debug("Loading PAGE ( " . $this->pageInfo["page"] ." ) controller => " . get_class($controller));
+
             $controller->render();
 
         } else {
@@ -248,11 +256,15 @@ class App {
     protected function loadController( $view , $params = array() ) {
         $viewFile = $this->_path . "/pages/$view.php";
         $controllerFile = $this->_path . "/controllers/$view.c.php";
+        Log::debug("Controller File => $controllerFile ");
         if ( file_exists( $controllerFile ) ) {
             require_once $controllerFile;
             $class = ucfirst($view);
             $class = str_replace('-','_', $class);
             $className = "\\$class"."Controller";
+
+            Log::debug("Controller Class => $className ");
+
             $controller = new $className( $viewFile, $params );
         } else {
             $controller = new Controller( $viewFile, $params );
