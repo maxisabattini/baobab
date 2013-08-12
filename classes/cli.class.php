@@ -199,7 +199,11 @@ class OutCmdLinux {
             $maxStr = strlen($i) > $maxStr ? strlen($i) : $maxStr;
         }
         foreach($vars as $i => $v){
-            echo str_pad($i, $maxStr, " ", STR_PAD_LEFT) . ": " . $v . "\n";
+            $s=$v;
+            if(is_object($v) || is_array($v)) {
+                $s=print_r($v, true);
+            }
+            echo str_pad($i, $maxStr, " ", STR_PAD_LEFT) . ": " . $s . "\n";
         }
     }
 

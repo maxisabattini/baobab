@@ -50,7 +50,9 @@ class Controller {
         }
 		
         //Render
-        include $this->view;
+        if( $this->view ) {
+            include $this->view;
+        }
     }
 
     protected function setVar($name, $value) {

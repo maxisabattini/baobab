@@ -101,27 +101,38 @@ class App {
 
         $this->appInfo["page"]= &$this->pageInfo;
 
-        $filePath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
+        //Loading View
+        $viewPath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
+        $hasView = file_exists($viewPath);
 
-        //404 page
-        if( ! file_exists($filePath) ) {
-            Log::warn("_APP_: Page not found : $filePath");
-            $filePath = $this->_path . "/pages/404.php";
-            $this->pageInfo["page"]="404";
+        if( ! $hasView ) {
+            Log::warn("_APP_: Page View not found : $viewPath");
         }
 
-        if( file_exists( $filePath ) ) {
+        //Loading Controller
+        $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
 
+        Log::debug("Loading PAGE ( " . $this->pageInfo["page"] ." ) controller => " . get_class($controller));
+
+        $hasController = get_class($controller) != "Controller";
+
+        //No View and controller - Custom 404 page
+        if( ! $hasView && ! $hasController ) {
+            
+            Log::warn("_APP_: 404 launched");
+
+            //loading Custom 404
+            $this->pageInfo["page"]="404";
             $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
 
-            Log::debug("Loading PAGE ( " . $this->pageInfo["page"] ." ) controller => " . get_class($controller));
-
-            $controller->render();
-
-        } else {
-            header('HTTP/1.0 404 Not Found');
-            die;
+            //No custom 404
+            if( get_class($controller) == "Controller" ) {
+                header('HTTP/1.0 404 Not Found');
+                die;
+            }
         }
+
+        $controller->render();
 	}
 
     public function info($section, $key, $default=false){
@@ -271,7 +282,6 @@ class App {
         }
 
         return $controller;
-        //$controller->exposeVarsAsGlobals();
     }
 }
 
