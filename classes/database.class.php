@@ -26,6 +26,12 @@ class Database {
         return true;
     }
 
+    /**
+     *  Get Database instance based on determinated options
+     *
+     * @param array $options
+     * @return Database
+     */
     public static function getInstance( $options = array() ) {
 
         if( !$options ) {	//Retrieve default db info
@@ -84,6 +90,8 @@ class Database {
 
         if(! $rs->execute( $this->_queryParams ) ) {
             $this->setErrorInfo( $rs->errorInfo() );
+            Log::error("_DATABASE_ ERROR:" );
+            Log::debug( $rs->errorInfo() );
             return false;
         }
 
@@ -172,7 +180,6 @@ class Database {
 
 	protected function setErrorInfo($error_info) {
 		$this->_errorInfo = $error_info;
-        Log::error("_DATABASE_:".$error_info);
 	}
 
 	public function getErrorInfo() {
