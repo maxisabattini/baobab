@@ -13,6 +13,12 @@ if( ! defined( "BAOBAB_PATH" ) ) {
 
 class App {
 
+    /**
+     * Get Instance
+     *
+     * @param string $name
+     * @return App
+     */
     public static function getInstance($name = 'default') {
         if( ! isset(self::$_instances[$name]) ) {
             self::$_instances[$name] = new self();
