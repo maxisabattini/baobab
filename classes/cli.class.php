@@ -27,6 +27,18 @@ class Cli {
 		}
     }
 
+    /**
+     * @return array
+     */
+    public function getAllParams(){
+        $this->getParam("");
+        return $this->_params;
+    }
+
+    /**
+     * @param $name
+     * @return mixed
+     */
     protected function getParam($name) {
         if( BAO_CMD ) {
             if( ! is_array( $this->_params ) ) {
@@ -36,6 +48,8 @@ class Cli {
                     $parts = explode("=", $arg);
                     if( count($parts)> 1 ) {
                         $this->_params[ $parts[0] ] = $parts[1];
+                    } else {
+                        $this->_params[ $arg ] = false;
                     }
                 }
             }
