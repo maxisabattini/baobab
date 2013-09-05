@@ -27,6 +27,15 @@ class Cli {
 		}
     }
 
+    /*
+     * CMD mode;                WEB mode;
+     *
+     * param=
+     * -param=           =>      &param=1
+     *
+     * --param=value    =>      &param=value
+     */
+
     /**
      * @return array
      */
@@ -44,22 +53,39 @@ class Cli {
             if( ! is_array( $this->_params ) ) {
                 global $argv;
                 $this->_params = array();
+
                 foreach($argv as $arg) {
-                    $parts = explode("=", $arg);
+                    $param = $arg;
+
+                    if( strlen($param) > 1 && $param[0] == '-') {
+                       $param = substr($param, 1);
+                    }
+                    if( strlen($param) > 1 && $param[0] == '-') {
+                        $param = substr($param, 1);
+                    }
+
+                    $parts = explode("=", $param);
                     if( count($parts)> 1 ) {
+                        //has value
                         $this->_params[ $parts[0] ] = $parts[1];
                     } else {
-                        $this->_params[ $arg ] = false;
+                        //not has value
+                        $this->_params[ $param ] = false;
                     }
                 }
             }
-            if( isset($this->_params["-$name"]) ) {
-                return $this->_params["-$name"];
+            if( isset($this->_params[$name]) ) {
+                return $this->_params[$name];
             }
-            return false;
+            return null;
         } else {
+            //Todo: review this
             return $_REQUEST[$name];
         }
+    }
+
+    protected function hasParam($param) {
+        return $this->getParam($param) !== null;
     }
 
     public function out( $string, $args=array() ){
