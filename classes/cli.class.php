@@ -223,7 +223,7 @@ class OutCmdLinux {
 
 
     public function outObject($obj){
-		$var=false;
+		$vars=false;
 		if( is_object($obj) ) {
 			$vars = get_object_vars($obj);			
 		}		
