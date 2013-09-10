@@ -108,6 +108,7 @@ class App {
         $this->appInfo["page"]= &$this->pageInfo;
 
         //Loading View
+	//TODO: change for view path setting
         $viewPath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
         $hasView = file_exists($viewPath);
 
@@ -120,7 +121,13 @@ class App {
 
         Log::debug("Loading PAGE ( " . $this->pageInfo["page"] ." ) controller => " . get_class($controller));
 
-        $hasController = get_class($controller) != "Controller";
+        $hasController = get_class($controller) != "baobab\\Controller";
+
+        Log::debug(
+		"Loading PAGE ( " . $this->pageInfo["page"] ." ) " .
+		" controller => " . ( $hasController ? "YES" : "NO") .	
+		" view => " . ( $hasView ? "YES" : "NO" )  
+	);
 
         //No View and controller - Custom 404 page
         if( ! $hasView && ! $hasController ) {
@@ -131,8 +138,14 @@ class App {
             $this->pageInfo["page"]="404";
             $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
 
+	    //TODO: change for view path setting
+            $viewPath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
+        
+            $hasController = get_class($controller) != "baobab\\Controller";
+            $hasView = file_exists($viewPath);
+
             //No custom 404
-            if( get_class($controller) == "Controller" ) {
+            if( ! $hasView && ! $hasController ) {
                 header('HTTP/1.0 404 Not Found');
                 die;
             }
@@ -267,7 +280,9 @@ class App {
         if( $pos = strpos($path, "index.php") ){
             $path = substr($path, 0, $pos);
         }
-        $this->_urlBase = $this->_siteUrlParts->toString(array("path"=>$path, "query"=>"", "fragment"=>""));
+        $this->_urlBase = $this->_siteUrlParts->toString(array("port"=> "", "path"=>$path, "query"=>"", "fragment"=>""));
+
+	Log::debug($this->_urlBase);
     }
 
     protected function loadController( $view , $params = array() ) {
@@ -318,12 +333,15 @@ class UrlParts implements \ArrayAccess {
         $container = array_merge($this->_container, $parts);
 
         $pageURL = $container["scheme"]."://".$container["host"].$container["path"].$container["query"];
-        if($container["port"]!=80) {
+        if( $container["port"] && $container["port"]!=80  ) {
             $pageURL .= ":" . $container["port"];
         }
         if( substr( $pageURL, -1) === "/" ) {
             $pageURL = substr( $pageURL, 0, strlen($pageURL) - 1 );
         }
+
+	Log::info("UrlParts::toString");
+	Log::debug($pageURL);
         return $pageURL;
     }
 
