@@ -37,10 +37,6 @@ class Controller {
 			}
 		}
 
-        //Log::info( "Render: ". $this->view );
-        //Log::debug( $this->params );
-        //Log::debug( $this->vars );
-
         //Expose vars
         foreach( $this->params as $fieldName => $fieldValue ) {
             $$fieldName = $fieldValue;

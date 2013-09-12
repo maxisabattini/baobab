@@ -108,7 +108,7 @@ class App {
         $this->appInfo["page"]= &$this->pageInfo;
 
         //Loading View
-	//TODO: change for view path setting
+	    //TODO: change for view path setting
         $viewPath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
         $hasView = file_exists($viewPath);
 
@@ -119,7 +119,7 @@ class App {
         //Loading Controller
         $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
 
-        Log::debug("Loading PAGE ( " . $this->pageInfo["page"] ." ) controller => " . get_class($controller));
+        //Log::debug("Loading PAGE ( " . $this->pageInfo["page"] ." ) controller => " . get_class($controller));
 
         $hasController = get_class($controller) != "baobab\\Controller";
 
@@ -127,7 +127,7 @@ class App {
 		"Loading PAGE ( " . $this->pageInfo["page"] ." ) " .
 		" controller => " . ( $hasController ? "YES" : "NO") .	
 		" view => " . ( $hasView ? "YES" : "NO" )  
-	);
+	    );
 
         //No View and controller - Custom 404 page
         if( ! $hasView && ! $hasController ) {
@@ -138,7 +138,7 @@ class App {
             $this->pageInfo["page"]="404";
             $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
 
-	    //TODO: change for view path setting
+	        //TODO: change for view path setting
             $viewPath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
         
             $hasController = get_class($controller) != "baobab\\Controller";
@@ -151,7 +151,9 @@ class App {
             }
         }
 
-        $controller->render();
+        if($hasView) {
+            $controller->render();
+        }
 	}
 
     public function info($section, $key, $default=false){
@@ -297,7 +299,12 @@ class App {
 
             Log::debug("Controller Class => $className ");
 
-            $controller = new $className( $viewFile, $params );
+            if( class_exists($className)) {
+                $controller = new $className( $viewFile, $params );
+            } else {
+                Log::error("Controller Class not exist.");
+                $controller = new Controller( $viewFile, $params );
+            }
         } else {
             $controller = new Controller( $viewFile, $params );
         }
