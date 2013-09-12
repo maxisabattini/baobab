@@ -212,18 +212,32 @@ class App {
             }
         }
 
-        if( ! file_exists( $viewFile ) ) {
+        $hasController = file_exists( $controllerFile );
+        $hasView = file_exists( $viewFile );
+
+        Log::debug(
+            "Loading MODULE ( " . $view ." ) " .
+                " controller => " . ( $hasController ? "YES" : "NO") .
+                " view => " . ( $hasView ? "YES" : "NO" )
+        );
+
+        if( ! $hasView ) {
             Log::error("_APP_: can not load view : $view");
             return;
         }
 
-        if ( file_exists( $controllerFile ) ) {
+        if ( $hasController ) {
+
             require_once $controllerFile;
 
             $className = "$namespace\\$class"."Controller";
-            $controller = new $className( $viewFile, $params );
+            if( class_exists($className) ) {
+                $controller = new $className( $viewFile, $params );
+            } else {
+                Log::warn("_APP_: can not load controller class : $className in : $controllerFile");
+                $controller = new Controller( $viewFile, $params );
+            }
         } else {
-            Log::warn("_APP_: can not load controller : $controllerFile");
             $controller = new Controller( $viewFile, $params );
         }
 
