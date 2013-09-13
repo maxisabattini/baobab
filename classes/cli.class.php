@@ -118,15 +118,15 @@ class Cli {
         }
     }    
 
-    public function outObject($obj) {
+    public function outObject($obj, $hideEmpty=false) {
         if(!$this->_silent) {
-            $this->_out->outObject($obj);
+            $this->_out->outObject($obj,$hideEmpty);
         }
     }
 
-    public function outObjectList($obj) {
+    public function outObjectList($obj, $hideEmpty=false) {
         if(!$this->_silent) {
-            $this->_out->outObjectList($obj);
+            $this->_out->outObjectList($obj, $hideEmpty);
         }
     }
 
@@ -222,7 +222,7 @@ class OutCmdLinux {
     }
 
 
-    public function outObject($obj){
+    public function outObject($obj ,$hideEmpty=false){
 		$vars=false;
 		if( is_object($obj) ) {
 			$vars = get_object_vars($obj);			
@@ -240,6 +240,10 @@ class OutCmdLinux {
         }
         foreach($vars as $i => $v){
             $s=$v;
+            if($hideEmpty&&!$s) {
+                continue;
+            }
+
             if(is_object($v) || is_array($v)) {
                 $s=print_r($v, true);
             }
@@ -247,11 +251,11 @@ class OutCmdLinux {
         }
     }
 
-    public function outObjectList($objects){
+    public function outObjectList($objects, $hideEmpty=false ){
         $i=1;
         foreach($objects as $o) {
             echo str_pad( " $i.row ", 80, "*", STR_PAD_BOTH) . "\n";
-            $this->outObject($o);
+            $this->outObject($o, $hideEmpty);
             $i++;
         }
     }
