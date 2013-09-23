@@ -21,233 +21,198 @@ class App {
      */
     public static function getInstance($name = 'default') {
         if( ! isset(self::$_instances[$name]) ) {
-            self::$_instances[$name] = new self();
+            self::$_instances[$name] = new self($name);
         }
         return self::$_instances[$name];
     }
-
-    // Paths
-
-    public function getPath() {
-        return $this->_path;
-    }
-
-    public function setPath($path) {
-        $this->_path = $path;
-    }
-
-    // URL Management
-
-    public function getUrl() {
-        return $this->_url;
-    }
-
-    public function getUrlBase() {
-        return $this->_urlBase;
-    }
-
-    public function getUrlParts() {
-        return $this->_siteUrlParts;
-    }
-
-    // Pages
-
-    public function route( $routes ) {
-
-        Log::debug("Starting route");
-
-        $pages = &$routes;
-
-        if( isset( $pages["*"] ) ) {
-            $this->appInfo["*"]=$pages["*"];
-        }
-
-        $uri = $this->getUrlParts();
-        $request = $uri["query"];
-
-        if( $pos = strpos( $request, "?") ) {
-            $request = substr($request, 0, $pos);
-        }
-
-        if( substr( $request, -1) === "/" ) {
-            $request = substr( $request, 0, strlen($request) - 1 );
-        }	
-
-        //Set the pages "page.real" => "something"
-        foreach($pages as $k => $v) {
-            if( isset($v["page"]) ) {
-                $this->pages[ $v["page"] ] = $k;
-            }			
-        }	
-
-        if(!$request) {
-            $request=".";
-        }
-
-        Log::debug("Request: $request");
-
-        if( isset( $pages[$request] ) ) {
-            $this->pageInfo = $pages[$request];			
-        }		
-
-        if( ! isset( $this->pageInfo["page"] ) ) {	//no rewrite for this page
-            $parts = explode("/", $request );		
-            $view = implode(".", $parts);
-            
-            //Reasign pageInfo
-            if( isset($this->pages[$view]) ) {
-                $this->pageInfo = $pages[ $this->pages[$view] ];
+    
+    protected $_name = "";
+    protected $_config = array(
+        "path"              => "",
+        "pages_path"         => "pages",
+        "modules_path"      => "modules",
+        "controller_path"   => "controllers",
+    );
+    
+    public function config($key, $value=false) {
+        if(!$value) {               
+            if(is_object($key)){
+                $key=(array)$key;
+            }            
+            if(is_array($key)){
+                $this->_config = array_merge($this->_config, $key);                
+            } else {    //Getter            
+                return $this->_config[$key];
             }
-            
-            //By default pageInfo
-            if( ! isset( $this->pageInfo["page"] ) ) {
-                $this->pageInfo["page"] = $view;
-            }
+        } else {
+            $this->_config[$key]=$value;
         }
-
-        $this->appInfo["page"]= &$this->pageInfo;
-
-        //Loading View
-	    //TODO: change for view path setting
-        $viewPath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
-        $hasView = file_exists($viewPath);
-
-        if( ! $hasView ) {
-            Log::warn("_APP_: Page View not found : $viewPath");
-        }
-
-        //Loading Controller
-        $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
-
-        //Log::debug("Loading PAGE ( " . $this->pageInfo["page"] ." ) controller => " . get_class($controller));
-
-        $hasController = get_class($controller) != "baobab\\Controller";
-
-        Log::debug(
-		"Loading PAGE ( " . $this->pageInfo["page"] ." ) " .
-		" controller => " . ( $hasController ? "YES" : "NO") .	
-		" view => " . ( $hasView ? "YES" : "NO" )  
-	    );
-
-        //No View and controller - Custom 404 page
-        if( ! $hasView && ! $hasController ) {
-            
-            Log::warn("_APP_: 404 launched");
-
-            //loading Custom 404
-            $this->pageInfo["page"]="404";
-            $controller = $this->loadController( $this->pageInfo["page"], $this->pageInfo );
-
-	        //TODO: change for view path setting
-            $viewPath = $this->_path . "/pages/" . $this->pageInfo["page"] . ".php";
-        
-            $hasController = get_class($controller) != "baobab\\Controller";
-            $hasView = file_exists($viewPath);
-
-            //No custom 404
-            if( ! $hasView && ! $hasController ) {
-                header('HTTP/1.0 404 Not Found');
-                die;
-            }
-        }
-
-        if($hasView) {
-            $controller->render();
-        }
-	}
-
-    public function info($section, $key, $default=false){
-        return isset( $this->appInfo[$section][$key] ) ? $this->appInfo[$section][$key] : $default;
     }
 
-    public function pageInfo() {
-        return $this->pageInfo;
+    protected $_routes = array();
+    protected $_routeUsed = false;
+
+    protected $_pages = array();
+    protected $_r_pages = array();
+    protected $_currentPage = array();
+
+    public function map($pattern, $callable, $params=array(), $methods=array()){
+        $url = $this->_url;
+        $uri = "/" . $url["query"];
+        $this->_routes[$pattern] = new Route($pattern, $uri, $callable, $params, $methods);
+
+        if(! is_callable($callable) ) {
+            $this->_pages[$pattern]=$callable;
+            $this->_r_pages[$callable]=$pattern;
+        }
     }
 
     public function pageUrl($page) {
-        if(!$page) {
-            $page=".";
-        }
-        if( isset($this->pages[$page]) ) {
-            $url = $this->_urlBase;
-            $pf="";
-            if( ! $this->info("*", "rewrite", false) ) {
-                $pf="/index.php";
-            }
-            return $url . "$pf/" . $this->pages[$page];
-        } else {
-            $parts = explode(".", $page );
+        return $this->_r_pages[$page];
+    }
 
-            return $this->_url . "/" . implode("/", $parts) ;
+    public function pageParams($page=false) {
+        if(!$page) {
+            $page=$this->_currentPage;
+        }
+
+        $pattern = $this->_r_pages[$page];
+        $route = $this->_routes[$pattern];
+        return $route->params;
+    }
+
+    public function get($pattern, $callable ){
+        $this->map($pattern, $callable, array("get"));
+    }
+    
+    public function post($pattern, $callable ){
+        $this->map($pattern, $callable, array("post"));
+    }
+
+    public function put($pattern, $callable ){
+        $this->map($pattern, $callable, array("put"));
+    }
+
+    protected function executeRoute($route){
+
+        $this->_routeUsed = true;
+        $params = $route->params;
+        $callable = $route->callable;
+        if(!$callable) {
+            Log::warn("Not callable or controller for this map: ". $route->pattern );
+        }
+
+        if(is_callable($callable)) {
+            $callable($params);
+        } else {    //Load Controller
+            $this->_currentPage = $route->pattern;
+            $this->_routeUsed = $this->render($route->callable, $route->params, false);
         }
     }
 
+    public function render($name, $params=array(), $isModule=true) {
 
-    // Controllers & Views
+        $viewPath = $isModule ? $this->config("modules_path") : $this->config("pages_path") ;
+        $viewFile = $viewPath . "/" . $name . ".php";
+        Log::debug( "Using view file : ( " . $viewFile ." ) " );
+        $hasView = file_exists($viewFile);
 
-    public function render($view, $params = array()) {
-
-        $prefix="";
-        $name=$view;
-        $class = ucfirst($name);
-        if( strpos($view, ".") !== false ) {
-            list($prefix, $name) = explode(".", $view);
-            $class = ucfirst($prefix) . ucfirst($name);
-        }
-
-        $namespace="";
-        if ( $prefix == "app" ) {
-            //CORE
-            $viewFile = BAOBAB_PATH  . "/$view.php";
-            $controllerFile = BAOBAB_PATH . "/controllers/$view.c.php";
-            $namespace="\\baobab";
-        } else {
-            //PAGES
-            $viewFile = $this->_path . "/pages/$view.php";
-            $controllerFile = $this->_path . "/controllers/$view.c.php";
-            if( ! file_exists( $viewFile ) ) {
-                //MODULES
-                $viewFile = $this->_path . "/modules/$view.m.php";
-                $controllerFile = $this->_path . "/controllers/$view.mc.php";
-            }
-        }
-
-        $hasController = file_exists( $controllerFile );
-        $hasView = file_exists( $viewFile );
+        $controllerPath = $this->config("controller_path");
+        $controllerFile = $controllerPath . "/" . $name . ".". ($isModule ? 'm' : '') ."c.php";
+        Log::debug( "Using view file : ( " . $controllerFile ." ) " );
+        $hasController = file_exists($controllerFile);
 
         Log::debug(
-            "Loading MODULE ( " . $view ." ) " .
+            "Loading " . ($isModule ? 'MODULE' : 'PAGE') . " ( " . $name ." ) " .
                 " controller => " . ( $hasController ? "YES" : "NO") .
                 " view => " . ( $hasView ? "YES" : "NO" )
         );
 
-        if( ! $hasView ) {
-            Log::error("_APP_: can not load view : $view");
-            return;
-        }
+        $controller = new Controller( $viewFile, $params );
 
-        if ( $hasController ) {
-
+        if( $hasController ) {
             require_once $controllerFile;
 
-            $className = "$namespace\\$class"."Controller";
-            if( class_exists($className) ) {
+            $class = ucfirst($name);
+            $class = str_replace('-','_', $class);
+            $className = "\\$class"."Controller";
+
+            Log::debug("Controller Class => $className ");
+
+            if( class_exists($className)) {
                 $controller = new $className( $viewFile, $params );
             } else {
-                Log::warn("_APP_: can not load controller class : $className in : $controllerFile");
-                $controller = new Controller( $viewFile, $params );
+                Log::error("Controller Class not exist.");
             }
-        } else {
-            $controller = new Controller( $viewFile, $params );
         }
 
-        Log::info("VIEW: " . $viewFile);
-        $controller->render();
+        if( ! $hasView && ! $hasController ) {
+             Log::warn( ($isModule ? 'MODULE' : 'PAGE') ." => $name not executed");
+             return false;
+        } else {
+            $controller->render();
+        }
+        return true;
     }
 
-	// Template management
+    // Paths
+    /*
+        public function getPath() {
+            return $this->_path;
+        }
 
-	private $_sections = array();
+        public function setPath($path) {
+            $this->_path = $path;
+        }
+
+        // URL Management
+
+
+        public function getUrl() {
+            return $this->_url;
+        }
+
+
+        public function getUrlBase() {
+            return $this->_urlBase;
+        }
+
+        public function getUrlParts() {
+            return $this->_siteUrlParts;
+        }
+        */
+
+    // Page
+
+    public function route( $routes = array() ) {
+
+        //TODO: import routes array
+        foreach($routes as $k=>$v) {
+            if(isset($v["page"])) {
+                $callable = $v["page"];
+                unset($v["page"]);
+                $this->map($k, $callable, $v);
+            }
+        }
+
+        Log::debug("Starting route");
+
+        foreach($this->_routes as $route) {
+            if ($route->isMatched) {
+                $this->executeRoute($route);
+                break;
+            }
+        }
+
+        //TODO: launch 404
+        if( ! $this->_routeUsed ) {
+            header('HTTP/1.0 404 Not Found');
+        }
+	}
+
+    // Template management
+
+    private $_sections = array();
 	
     public function startSection($name) {
         ob_start();
@@ -258,76 +223,55 @@ class App {
         $this->_sections[$name]= ob_get_clean();
     }
 	
-	public function addSection($name, $content) {
-		$this->_sections[$name]=$content;
-	}
-	
-	public function removeSection($name) {
-		unset($this->_sections[$name]);
-	}
-	
-	public function getSection($name) {
+    public function addSection($name, $content) {
+        $this->_sections[$name]=$content;
+    }
+
+    public function removeSection($name) {
+        unset($this->_sections[$name]);
+    }
+
+    public function getSection($name) {
         return $this->_sections[$name];
     }
 	
-	public function renderAsTemplate($view, $params = array() ) {		
-		$this->render( $view, array_merge($this->_sections, $params) );
-	}
+    public function renderAsTemplate($view, $params = array() ) {		
+            $this->render( $view, array_merge($this->_sections, $params) );
+    }
 
     // Private members
 
     protected static $_instances = array();
-    private $_path;
-    private $_url;
-    private $_urlBase;
-    private $_siteUrlParts= array();
-    private $pageInfo = array();
-    private $appInfo = array();
 
-    private function __construct() {
+    protected $_url= array();
+
+    private function __construct($name="") {
+        
+        $this->_name = $name;
+
         $baobabPath = dirname ( dirname(__FILE__) );
-        $this->_path = dirname(dirname(dirname( $baobabPath ) ) );
+        $_path = dirname(dirname(dirname( $baobabPath ) ) );
+        $this->config("path", $_path);
 
+        $this->_url = new Url();
 
-        $this->_siteUrlParts = new UrlParts();
-        $this->_url = $this->_siteUrlParts->toString();
+        $_url = $this->_url->toString();
 
-        $path = $this->_siteUrlParts["path"];
+        $this->config("url", $_url);
+
+        $path = $this->_url["path"];
         if( $pos = strpos($path, "index.php") ){
             $path = substr($path, 0, $pos);
         }
-        $this->_urlBase = $this->_siteUrlParts->toString(array("port"=> "", "path"=>$path, "query"=>"", "fragment"=>""));
+        $_urlBase = $this->_url->toString(array("port"=> "", "path"=>$path, "query"=>"", "fragment"=>""));
+        $this->config("url_base", $_urlBase);
 
-	Log::debug($this->_urlBase);
-    }
+	    Log::debug($_urlBase);
 
-    protected function loadController( $view , $params = array() ) {
-        $viewFile = $this->_path . "/pages/$view.php";
-        $controllerFile = $this->_path . "/controllers/$view.c.php";
-        Log::debug("Controller File => $controllerFile ");
-        if ( file_exists( $controllerFile ) ) {
-            require_once $controllerFile;
-            $class = ucfirst($view);
-            $class = str_replace('-','_', $class);
-            $className = "\\$class"."Controller";
-
-            Log::debug("Controller Class => $className ");
-
-            if( class_exists($className)) {
-                $controller = new $className( $viewFile, $params );
-            } else {
-                Log::error("Controller Class not exist.");
-                $controller = new Controller( $viewFile, $params );
-            }
-        } else {
-            $controller = new Controller( $viewFile, $params );
-        }
-
-        return $controller;
     }
 }
 
-class UrlParts implements \ArrayAccess {
+class Url implements \ArrayAccess {
 
     private $_container = array();
 
@@ -361,8 +305,8 @@ class UrlParts implements \ArrayAccess {
             $pageURL = substr( $pageURL, 0, strlen($pageURL) - 1 );
         }
 
-	Log::info("UrlParts::toString");
-	Log::debug($pageURL);
+    	Log::info("UrlParts::toString");
+	    Log::debug($pageURL);
         return $pageURL;
     }
 
@@ -382,3 +326,118 @@ class UrlParts implements \ArrayAccess {
         return isset($this->_container[$offset]) ? $this->_container[$offset] : null;
     }
 }
+
+class Route {
+
+    public $pattern;
+    public $callable;
+    public $params;
+
+    public $conditions = array();
+
+    public $methods = array();
+
+    public $isMatched = false;
+
+    function __construct($pattern, $uri, $callable=null, $params=array(), $methods=array()){
+
+        $this->pattern = $pattern;
+        $this->callable=$callable;
+        $this->methods=$methods;
+
+
+        //$this->params = array();
+        $this->params = $params;
+
+        $p_names = array(); $p_values = array();
+
+        preg_match_all('@:([\w]+)@', $pattern, $p_names, PREG_PATTERN_ORDER);
+        $p_names = $p_names[0];
+
+        $url_regex = preg_replace_callback('@:[\w]+@', array($this, 'regex_url'), $pattern);
+        $url_regex .= '/?';
+
+        if (preg_match('@^' . $url_regex . '$@', $uri, $p_values)) {
+            array_shift($p_values);
+
+            foreach($p_names as $index => $value) $this->params[substr($value,1)] = urldecode($p_values[$index]);
+
+            //foreach($target as $key => $value) $this->params[$key] = $value;
+
+            $this->isMatched = true;
+        }
+
+        unset($p_names); unset($p_values);
+    }
+
+
+    public function matches($uri){}
+    
+    function regex_url($matches) {
+    	$key = str_replace(':', '', $matches[0]);
+    	if (array_key_exists($key, $this->conditions)) {
+    		return '('.$this->conditions[$key].')';
+    	}
+    	else {
+    		return '([a-zA-Z0-9_\+\-%]+)';
+    	}
+    }
+}
+
+
+/*
+ class Router {
+    public $request_uri;
+    public $routes;
+    public $controller, $controller_name;
+    public $action, $id;
+    public $params;
+    public $route_found = false;
+
+    public function __construct() {
+        $request = $_SERVER['REQUEST_URI'];
+        $pos = strpos($request, '?');
+        if ($pos) $request = substr($request, 0, $pos);
+
+        $this->request_uri = $request;
+        $this->routes = array();
+    }
+
+    public function map($rule, $target=array(), $conditions=array()) {
+        $this->routes[$rule] = new Route($rule, $this->request_uri, $target, $conditions);
+    }
+
+    public function default_routes() {
+        $this->map('/:controller');
+        $this->map('/:controller/:action');
+        $this->map('/:controller/:action/:id');
+    }
+
+    private function set_route($route) {
+        $this->route_found = true;
+        $params = $route->params;
+        $this->controller = $params['controller']; unset($params['controller']);
+        $this->action = $params['action']; unset($params['action']);
+        $this->id = $params['id'];
+        $this->params = array_merge($params, $_GET);
+
+        if (empty($this->controller)) $this->controller = ROUTER_DEFAULT_CONTROLLER;
+        if (empty($this->action)) $this->action = ROUTER_DEFAULT_ACTION;
+        if (empty($this->id)) $this->id = null;
+
+        $w = explode('_', $this->controller);
+        foreach($w as $k => $v) $w[$k] = ucfirst($v);
+        $this->controller_name = implode('', $w);
+    }
+
+    public function execute() {
+        foreach($this->routes as $route) {
+            if ($route->is_matched) {
+                $this->set_route($route);
+                break;
+            }
+        }
+    }
+}
+
+ */

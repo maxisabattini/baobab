@@ -10,8 +10,11 @@ class AppHeaderController extends Controller {
 		$app = App::getInstance();
 		
 		//Init vars here
-		$title = $app->info("page", "title");
-		$defaultTitle = $app->info("*", "title");
+        $defaultTitle = $app->config("title");
+
+        $pageParams = $app->pageParams();
+
+		$title = $pageParams["title"];
 		
 		if(!$title) {
 		    $title = $defaultTitle;
@@ -20,8 +23,8 @@ class AppHeaderController extends Controller {
 		}		
 		
 		$this->setVar("title" , $title );
-		$this->setVar("keywords" , $app->info("page", "meta_keywords") );
-		$this->setVar("description" , $app->info("page", "meta_description") );
+		$this->setVar("keywords" , $pageParams["meta_keywords"] );
+		$this->setVar("description" , $pageParams["meta_description"] );
 		
 		$this->setVar("charset", "UTF-8");
 
