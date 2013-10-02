@@ -1,8 +1,12 @@
 <?php
 
-namespace baobab;
+use \baobab\Controller;
 
-class AppHeaderController extends Controller {
+use \baobab\App;
+
+use \baobab\Config;
+
+class App_HeaderController extends Controller {
 
 	public function __construct( $view, $params = array() ) {
 		parent::__construct($view, $params);
@@ -29,6 +33,6 @@ class AppHeaderController extends Controller {
 		$this->setVar("charset", "UTF-8");
 
 
-        $this->setVar("packed", Config::get('packedResources',false));
+        $this->setVar("packed", $app->config("packed_resources") );
 	}
 }

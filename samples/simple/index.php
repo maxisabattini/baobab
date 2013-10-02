@@ -1,11 +1,17 @@
 <?php
 
+//$cfg->get("statics_url")
+
 $routes = array(
     
     "*"     => array(
         "title"     => "Site Test",
         "cache"     => false,
         "rewrite"   => false,
+        "packed_resources" =>  true,
+        "packed_resources_path" =>  "statics",
+        "packed_resources_url" =>  "statics",
+        "path" => dirname(__FILE__),
     ),
     
     //HOME
@@ -32,5 +38,8 @@ require_once "../../classes/app.class.php";
 $app = \baobab\App::getInstance();
 //$app->setPath( dirname(__FILE__) );
 //\baobab\Log::$level = \baobab\Log::ALL;
+
+
+\baobab\Log::info("//////////////////////////////////////////////////");
 $app->route($routes);
 

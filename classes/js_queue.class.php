@@ -86,12 +86,16 @@ class JSQueue extends Queue {
         $cfg = Config::getInstance();
         $app = App::getInstance();
 
-        $path = $cfg->get("statics_paths", $app->getPath() . "/temp" );
-        $path = $path . "/all.$hash.js";
 
-        $appUrl = $app->getUrlBase();
-        $url = $cfg->get("statics_url", $appUrl . "/temp" );
-        $url = $url . "/all.$hash.js";
+        $appUrl = $app->config("url_base");
+        $appName = urlencode($appUrl);
+
+        $url = $app->config("packed_resources_url");
+        $url = $url . "/$appName.$hash.js";
+
+        $path = $app->config("packed_resources_path");
+        $path = $path . "/$appName.$hash.js";
+
 
         if( ! file_exists($path) ) {
 
@@ -117,9 +121,10 @@ class JSQueue extends Queue {
                 Log::warn("Can not load minifier.php");
             }
 
-            if( !file_put_contents( $path, $code) ) {
-                Log::warn("Can not write packed js");
-                return $this->flush();
+            if( !@file_put_contents( $path, $code) ) {
+                Log::warn("Can not write packed js : $path");
+                $this->flush();
+                return;
             };
         }
 

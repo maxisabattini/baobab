@@ -15,7 +15,7 @@ class Cache {
                 $this->_link = new \Memcache;
                 $this->_link->connect('localhost', 11211);
                 $this->_isEnabled = true;
-            } catch(Exception $e){
+            } catch(\Exception $e){
                 Log::WARN("Can not connect to MEMCACHE service");
             }
         } else {

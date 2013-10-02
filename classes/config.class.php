@@ -29,7 +29,12 @@ class Config {
 	}
 
 	private function getConfigFilesList() {
-		$files = array (); 
+		$files = array ();
+
+        if(! defined("BAO_PATH") ) {
+            define("BAO_PATH", "");
+        }
+
 		$dir = BAO_PATH . '/cfg/';
 
 		if ( is_dir($dir)) {

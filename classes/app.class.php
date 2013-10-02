@@ -26,21 +26,13 @@ class App {
         return self::$_instances[$name];
     }
     
-    protected $_name = "";
-    protected $_config = array(
-        "path"              => "",
-        "pages_path"         => "pages",
-        "modules_path"      => "modules",
-        "controller_path"   => "controllers",
-    );
-    
     public function config($key, $value=false) {
         if(!$value) {               
             if(is_object($key)){
                 $key=(array)$key;
             }            
             if(is_array($key)){
-                $this->_config = array_merge($this->_config, $key);                
+                $this->_config->merge($key);
             } else {    //Getter            
                 return $this->_config[$key];
             }
@@ -49,36 +41,15 @@ class App {
         }
     }
 
-    protected $_routes = array();
-    protected $_routeUsed = false;
-
-    protected $_pages = array();
-    protected $_r_pages = array();
-    protected $_currentPage = array();
-
     public function map($pattern, $callable, $params=array(), $methods=array()){
-        $url = $this->_url;
-        $uri = "/" . $url["query"];
-        $this->_routes[$pattern] = new Route($pattern, $uri, $callable, $params, $methods);
+
+        $params = array_merge($params, $this->_mapParams);
+        $this->_routes[$pattern] = new Route($pattern, $this->_mapUri, $callable, $params, $methods);
 
         if(! is_callable($callable) ) {
             $this->_pages[$pattern]=$callable;
             $this->_r_pages[$callable]=$pattern;
         }
-    }
-
-    public function pageUrl($page) {
-        return $this->_r_pages[$page];
-    }
-
-    public function pageParams($page=false) {
-        if(!$page) {
-            $page=$this->_currentPage;
-        }
-
-        $pattern = $this->_r_pages[$page];
-        $route = $this->_routes[$pattern];
-        return $route->params;
     }
 
     public function get($pattern, $callable ){
@@ -93,34 +64,15 @@ class App {
         $this->map($pattern, $callable, array("put"));
     }
 
-    protected function executeRoute($route){
-
-        $this->_routeUsed = true;
-        $params = $route->params;
-        $callable = $route->callable;
-        if(!$callable) {
-            Log::warn("Not callable or controller for this map: ". $route->pattern );
-        }
-
-        if(is_callable($callable)) {
-            $callable($params);
-        } else {    //Load Controller
-            $this->_currentPage = $route->pattern;
-            $this->_routeUsed = $this->render($route->callable, $route->params, false);
-        }
-    }
+    // View/Controller management
 
     public function render($name, $params=array(), $isModule=true) {
 
-        $viewPath = $isModule ? $this->config("modules_path") : $this->config("pages_path") ;
-        $viewFile = $viewPath . "/" . $name . ".php";
-        Log::debug( "Using view file : ( " . $viewFile ." ) " );
-        $hasView = file_exists($viewFile);
+        $viewFile = $this->_getViewFile($name, $isModule);
+        $hasView = !!$viewFile;
 
-        $controllerPath = $this->config("controller_path");
-        $controllerFile = $controllerPath . "/" . $name . ".". ($isModule ? 'm' : '') ."c.php";
-        Log::debug( "Using view file : ( " . $controllerFile ." ) " );
-        $hasController = file_exists($controllerFile);
+        $controllerFile = $this->_getControllerFile($name, $isModule);
+        $hasController = !!$controllerFile;
 
         Log::debug(
             "Loading " . ($isModule ? 'MODULE' : 'PAGE') . " ( " . $name ." ) " .
@@ -134,7 +86,10 @@ class App {
             require_once $controllerFile;
 
             $class = ucfirst($name);
+
             $class = str_replace('-','_', $class);
+            $class = str_replace('.','_', $class);
+
             $className = "\\$class"."Controller";
 
             Log::debug("Controller Class => $className ");
@@ -155,42 +110,46 @@ class App {
         return true;
     }
 
-    // Paths
-    /*
-        public function getPath() {
-            return $this->_path;
+    // Pages management
+
+    public function pageUrl($page) {
+        $url = $this->config("url_base");
+        if(!$this->config("rewrite")) {
+            $url.="/index.php";
+        }
+        $url.=$this->_r_pages[$page];
+        return $url;
+    }
+
+    public function pageParams($page=false) {
+
+        if(!$page) {
+            $route = $this->_routes[ $this->_currentPattern ];
+        } else {
+            $pattern = $this->_r_pages[$page];
+            $route = $this->_routes[$pattern];
         }
 
-        public function setPath($path) {
-            $this->_path = $path;
-        }
-
-        // URL Management
-
-
-        public function getUrl() {
-            return $this->_url;
-        }
-
-
-        public function getUrlBase() {
-            return $this->_urlBase;
-        }
-
-        public function getUrlParts() {
-            return $this->_siteUrlParts;
-        }
-        */
-
-    // Page
+        return array_merge( array( "page" => $route->callable ), $route->params ) ;
+    }
 
     public function route( $routes = array() ) {
 
-        //TODO: import routes array
         foreach($routes as $k=>$v) {
+
+            if($k=="*") {
+                $this->_config->merge($v);
+                continue;
+            }
+
             if(isset($v["page"])) {
                 $callable = $v["page"];
                 unset($v["page"]);
+
+                if($k==".") {
+                    $k="/";
+                }
+
                 $this->map($k, $callable, $v);
             }
         }
@@ -199,12 +158,11 @@ class App {
 
         foreach($this->_routes as $route) {
             if ($route->isMatched) {
-                $this->executeRoute($route);
+                $this->_executeRoute($route);
                 break;
             }
         }
 
-        //TODO: launch 404
         if( ! $this->_routeUsed ) {
             header('HTTP/1.0 404 Not Found');
         }
@@ -239,21 +197,78 @@ class App {
             $this->render( $view, array_merge($this->_sections, $params) );
     }
 
+    // Deprecated
+    //
+
+    public function getPath() {
+        return $this->config("path");
+    }
+
+    public function setPath($path) {
+        $this->config("path", $path);
+    }
+
+    public function getUrl() {
+        return $this->config("url");
+    }
+
+
+    public function getUrlBase() {
+        return $this->config("url_base");
+    }
+
+    // END Deprecated
+    //
+
     // Private members
 
     protected static $_instances = array();
 
     protected $_url= array();
 
+    protected $_routes = array();
+    protected $_routeUsed = false;
+
+    protected $_pages = array();
+    protected $_r_pages = array();
+
+    protected $_currentPattern = null;
+
+    protected $_config = null;
+
+
     private function __construct($name="") {
-        
-        $this->_name = $name;
+
+        $defaults = array(
+
+            "rewrite"           => true,
+
+            "path"              => "",
+
+            "pages_path"        => "pages",
+            "modules_path"      => array(
+                BAOBAB_PATH,
+                "modules"
+            ),
+            "controllers_path"   => array(
+                BAOBAB_PATH . "/controllers",
+                "controllers"
+            ),
+
+        );
+        $this->_config = new Params();
+        $this->_config->merge($defaults);
+
+        $this->config("name", $name);
 
         $baobabPath = dirname ( dirname(__FILE__) );
         $_path = dirname(dirname(dirname( $baobabPath ) ) );
         $this->config("path", $_path);
 
         $this->_url = new Url();
+
+        Log::debug("URL Base: ");
+        Log::debug($this->_url);
 
         $_url = $this->_url->toString();
 
@@ -263,11 +278,90 @@ class App {
         if( $pos = strpos($path, "index.php") ){
             $path = substr($path, 0, $pos);
         }
+
         $_urlBase = $this->_url->toString(array("port"=> "", "path"=>$path, "query"=>"", "fragment"=>""));
         $this->config("url_base", $_urlBase);
 
-	    Log::debug($_urlBase);
+	    //Log::debug("URL Base: " . $_urlBase);
 
+        $url = $this->_url;
+        $query = $url["query"];
+
+        //Remove index.php -> no rewrite mode
+        if( strpos($query, "index.php") === 0 ){
+            $query = substr( $query, strlen("index.php"));
+        }
+
+        //Convert query to params
+        $this->_mapParams=array();
+        if( ( $pos = strpos($query, "?") ) !== false ){
+
+            $q_string = substr( $query, $pos+1 );
+
+            $output_array = array();
+            parse_str($q_string, $output_array );
+
+            $this->_mapParams = $output_array;
+
+            $query = substr( $query, 0, $pos);
+        }
+
+
+        $this->_mapUri = "/" . $query;
+        Log::debug("Map Uri: ". $this->_mapUri );
+    }
+
+    protected function _executeRoute($route){
+
+        $this->_routeUsed = true;
+        $params = $route->params;
+        $callable = $route->callable;
+        if(!$callable) {
+            Log::warn("Not callable or controller for this map: ". $route->pattern );
+        }
+
+        if(is_callable($callable)) {
+            $callable($params);
+        } else {    //Load Controller
+            $this->_currentPattern = $route->pattern;
+            $this->_routeUsed = $this->render($route->callable, $route->params, false);
+        }
+    }
+
+    protected function _getViewFile($name, $isModule=true) {
+        $paths = $isModule ? $this->config("modules_path") : $this->config("pages_path") ;
+
+        if(!is_array($paths)) {
+            $paths = array( $paths );
+        }
+
+        foreach( array_reverse($paths) as $path) {
+            $viewFile = $path . "/" . $name . ( $isModule ? ".m" : '' ) . ".php";
+            if(file_exists($viewFile)){
+                Log::debug( "Using view file : ( " . $viewFile ." ) " );
+                return $viewFile;
+            }
+        }
+
+        return false;
+    }
+
+    protected function _getControllerFile($name, $isModule=true) {
+        $paths = $this->config("controllers_path");
+
+        if(!is_array($paths)) {
+            $paths = array( $paths );
+        }
+
+        foreach( array_reverse($paths) as $path) {
+            $controllerFile = $path . "/" . $name . ".". ($isModule ? 'm' : '') ."c.php";
+            if(file_exists($controllerFile)){
+                Log::debug( "Using controller file : ( " . $controllerFile ." ) " );
+                return $controllerFile;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -384,6 +478,35 @@ class Route {
     }
 }
 
+class Params implements \ArrayAccess {
+
+    private $_container = array();
+
+    public function offsetSet($offset, $value) {
+        $this->_container[$offset] = $value;
+    }
+
+    public function offsetExists($offset) {
+        return isset($this->_container[$offset]);
+    }
+
+    public function offsetUnset($offset) {
+        unset($this->_container[$offset]);
+    }
+
+    public function offsetGet($offset) {
+        if(!isset($this->_container[$offset]) ) {
+            Log::warn("Config/Param not set: " . $offset);
+            return null;
+        } else {
+            return $this->_container[$offset];
+        }
+    }
+
+    public function merge($array){
+        $this->_container= array_merge($this->_container, $array);
+    }
+}
 
 /*
  class Router {

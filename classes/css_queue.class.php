@@ -37,12 +37,15 @@ class CssQueue extends Queue {
         $cfg = Config::getInstance();
         $app = App::getInstance();
 
-        $path = $cfg->get("statics_paths", $app->getPath() . "/temp" );
-        $path = $path . "/all.$hash.css";
-
         $appUrl = $app->getUrlBase();
-        $url = $cfg->get("statics_url", $appUrl . "/temp" );
-        $url = $url . "/all.$hash.css";
+        $appName = urlencode($appUrl);
+
+        $url = $app->config("packed_resources_url");
+        $url = $url . "/$appName.$hash.css";
+
+        $path = $app->config("packed_resources_path");
+        $path = $path . "/$appName.$hash.css";
+
 
         if( ! file_exists($path) ) {
 
@@ -62,11 +65,11 @@ class CssQueue extends Queue {
             $code = str_replace(array("\r\n", "\r", "\n", "\t", '  ', '    ', '    '), '', $code);
 
             //file_put_contents( $path, $code);
-            if( !file_put_contents( $path, $code) ) {
-                Log::warn("Can not write packed js");
-                return $this->flush();
+            if( !@file_put_contents( $path, $code) ) {
+                Log::warn("Can not write packed css : $path");
+                $this->flush();
+                return;
             }
-
         }
 
         $md5 = md5_file( $path );

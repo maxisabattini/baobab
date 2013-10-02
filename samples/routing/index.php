@@ -10,7 +10,7 @@ $app->map("/about", "about");
 $app->route();
 
 
-var_dump($app);
+//var_dump($app);
 
 /*
 $url = $app->getUrlParts();

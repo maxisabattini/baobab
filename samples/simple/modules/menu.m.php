@@ -1,7 +1,12 @@
 <?php
 global $app;
 
-$page = $app->info("page", "page");
+$params = $app->pageParams();
+
+var_dump($params);
+
+$page = $params["page"];
+
 $class = 'class="active"';
 
 ?>

@@ -1,0 +1,3 @@
+[submodule "libs/JShrink"]
+	path = libs/JShrink
+	url = https://github.com/tedivm/JShrink.git
