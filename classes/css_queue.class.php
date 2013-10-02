@@ -34,13 +34,16 @@ class CssQueue extends Queue {
         $all = $this->getAll();
         $hash = md5( implode("",$all) );
 
-        $cfg = Config::getInstance();
         $app = App::getInstance();
 
         $appUrl = $app->getUrlBase();
-        $appName = urlencode($appUrl);
+        //$appName = urlencode($appUrl);
+        $appName = md5($appUrl);
 
         $url = $app->config("packed_resources_url");
+        if ( substr($url, 0, 7) != 'http://' && substr($url, 0, 8) != 'https://' && substr($url, 0, 2) != '//') {
+            $url = $appUrl . "/" . $url;
+        }
         $url = $url . "/$appName.$hash.css";
 
         $path = $app->config("packed_resources_path");

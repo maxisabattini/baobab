@@ -1,15 +1,16 @@
 <?php
 
 namespace baobab;
+
+if( ! defined( "BAOBAB_PATH" ) ) {
+    define( "BAOBAB_PATH", dirname ( dirname(__FILE__) ) );
+}
+
 require_once "config.class.php";
 require_once "log.class.php";
 require_once "controller.class.php";
 require_once "js_queue.class.php";
 require_once "css_queue.class.php";
-
-if( ! defined( "BAOBAB_PATH" ) ) {
-    define( "BAOBAB_PATH", dirname ( dirname(__FILE__) ) );
-}
 
 class App {
 

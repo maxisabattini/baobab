@@ -83,14 +83,16 @@ class JSQueue extends Queue {
 
         $hash = md5( implode("",$allReal) );
 
-        $cfg = Config::getInstance();
         $app = App::getInstance();
 
-
         $appUrl = $app->config("url_base");
-        $appName = urlencode($appUrl);
+        //$appName = urlencode($appUrl);
+        $appName = md5($appUrl);
 
         $url = $app->config("packed_resources_url");
+        if ( substr($url, 0, 7) != 'http://' && substr($url, 0, 8) != 'https://' && substr($url, 0, 2) != '//') {
+            $url = $appUrl . "/" . $url;
+        }
         $url = $url . "/$appName.$hash.js";
 
         $path = $app->config("packed_resources_path");
@@ -113,7 +115,7 @@ class JSQueue extends Queue {
             }
 
             //Minifier
-            $jShrinkPath = $cfg->get("jshrin_path", BAOBAB_PATH . "/libs/JShrink/src/JShrink/Minifier.php" );
+            $jShrinkPath = BAOBAB_PATH . "/libs/JShrink/src/JShrink/Minifier.php";
             if(file_exists($jShrinkPath)){
                 require_once $jShrinkPath;
                 $code = \JShrink\Minifier::minify($code, array('flaggedComments' => false));

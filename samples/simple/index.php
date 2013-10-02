@@ -9,7 +9,7 @@ $routes = array(
         "cache"     => false,
         "rewrite"   => false,
         "packed_resources" =>  true,
-        "packed_resources_path" =>  "statics",
+        "packed_resources_path" =>  dirname(__FILE__) . "/statics",
         "packed_resources_url" =>  "statics",
         "path" => dirname(__FILE__),
     ),
@@ -43,3 +43,4 @@ $app = \baobab\App::getInstance();
 \baobab\Log::info("//////////////////////////////////////////////////");
 $app->route($routes);
 
+var_dump($app);
