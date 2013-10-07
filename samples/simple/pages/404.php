@@ -11,12 +11,12 @@ $enq->addFile("//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-c
 <body>
 
 <div class="container">
-    <h3>Home</h3>
+    <h3>404</h3>
 
     <?php $this->app->render("menu"); ?>
 
     <p class="lead">
-    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+    Page not found
     </p>
 </div>
 

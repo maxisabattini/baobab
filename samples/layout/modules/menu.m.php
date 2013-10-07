@@ -2,9 +2,7 @@
 global $app;
 
 $params = $app->pageParams();
-
 $page = $params["page"];
-
 $class = 'class="active"';
 
 ?>

@@ -3,15 +3,26 @@
 namespace baobab;
 
 class Controller {
+
 	protected $params;
     protected $view;
     protected $vars = array();
 
-	public function __construct( $view, $params = array() ) {
+    public $app=null;
+
+	public function __construct( $view, $params = array(), $app=null ) {
 		$this->params = $params;
 		$this->view = $view;
 
-        //Init vars here
+        if(!$app) {
+            $this->app=App::getInstance();
+        } else {
+            $this->app=$app;
+        }
+    }
+
+    public function setView($view){
+		$this->view = $view;
     }
 
     public function exposeVarsAsGlobals() {
@@ -22,7 +33,17 @@ class Controller {
         }
     }
 
-    public function render() {
+    public function render($name="", $params=array(), $isModule=true) {
+
+        if($name) {
+            Log::debug("Render on Controller : $name");
+            $viewParams = new Params($this->getVars());
+            $viewParams->merge($params);
+            $this->app->render($name, $viewParams->toArray(), $isModule);
+            return;
+        }
+
+
 		//Load Description file
 		$descFile = $this->getViewDescFile();
 		if(file_exists($descFile)) {
@@ -51,12 +72,16 @@ class Controller {
         }
     }
 
-    protected function setVar($name, $value) {
+    public function setVar($name, $value) {
         $this->vars[$name]=$value;
     }
 
-    protected function getVar($name) {
+    public function getVar($name) {
         return $this->vars[$name];
+    }
+
+    public function getVars(){
+        return $this->vars;
     }
 	
 	private function getViewDescFile() {	

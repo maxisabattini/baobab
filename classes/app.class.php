@@ -44,8 +44,10 @@ class App {
 
     public function map($pattern, $callable, $params=array(), $methods=array()){
 
-        $params = array_merge($params, $this->_mapParams);
-        $this->_routes[$pattern] = new Route($pattern, $this->_mapUri, $callable, $params, $methods);
+        $realParams = new Params($params);
+        $realParams->merge($this->_mapParams);
+
+        $this->_routes[$pattern] = new Route($pattern, $this->_mapUri, $callable, $realParams, $methods);
 
         if(! is_callable($callable) ) {
             $this->_pages[$pattern]=$callable;
@@ -69,6 +71,10 @@ class App {
 
     public function render($name, $params=array(), $isModule=true) {
 
+        if(!is_array($params)){
+            $params=array();
+        }
+
         $viewFile = $this->_getViewFile($name, $isModule);
         $hasView = !!$viewFile;
 
@@ -81,7 +87,7 @@ class App {
                 " view => " . ( $hasView ? "YES" : "NO" )
         );
 
-        $controller = new Controller( $viewFile, $params );
+        $controller = new Controller( $viewFile, $params, $this );
 
         if( $hasController ) {
             require_once $controllerFile;
@@ -106,6 +112,7 @@ class App {
              Log::warn( ($isModule ? 'MODULE' : 'PAGE') ." => $name not executed");
              return false;
         } else {
+            $controller->app = $this;
             $controller->render();
         }
         return true;
@@ -131,7 +138,10 @@ class App {
             $route = $this->_routes[$pattern];
         }
 
-        return array_merge( array( "page" => $route->callable ), $route->params ) ;
+        $result = clone $route->params;
+        $result->merge(array( "page" => $route->callable ));
+        return $result;
+        //return array_merge( array( "page" => $route->callable ), $route->params ) ;
     }
 
     public function route( $routes = array() ) {
@@ -165,7 +175,14 @@ class App {
         }
 
         if( ! $this->_routeUsed ) {
-            header('HTTP/1.0 404 Not Found');
+            $page404='404';
+            if( isset( $this->_r_pages[$page404] ) ) {
+                $pattern = $this->_r_pages[$page404];
+                $route = $this->_routes[$pattern];
+                $this->_executeRoute($route);
+            } else {
+                header('HTTP/1.0 404 Not Found');
+            }
         }
 	}
 
@@ -255,11 +272,11 @@ class App {
                 BAOBAB_PATH . "/controllers",
                 "controllers"
             ),
-
+            "layouts_path"   => array(
+                "layouts"
+            ),
         );
-        $this->_config = new Params();
-        $this->_config->merge($defaults);
-
+        $this->_config = new Params($defaults);
         $this->config("name", $name);
 
         $baobabPath = dirname ( dirname(__FILE__) );
@@ -325,8 +342,39 @@ class App {
             $callable($params);
         } else {    //Load Controller
             $this->_currentPattern = $route->pattern;
-            $this->_routeUsed = $this->render($route->callable, $route->params, false);
+
+            $layout = isset($route->params["layout"])?$route->params["layout"]:"default";
+            $layoutFile = $this->_getLayoutFile($layout);
+            $hasLayout = !!$layoutFile;
+            Log::debug("Layout request => $layout ");
+            if( $hasLayout ) {
+                Log::debug("Using Layout File => $layoutFile ");
+                $controller = new Controller( $layoutFile, $params, $this );
+                $controller->setVar("page", $route->callable);
+                $controller->render();
+            } else {
+                $this->_routeUsed = $this->render($route->callable, $route->params, false);
+            }
         }
+    }
+
+
+    protected function _getLayoutFile($name) {
+        $paths = $this->config("layouts_path");
+
+        if(!is_array($paths)) {
+            $paths = array( $paths );
+        }
+
+        foreach( array_reverse($paths) as $path) {
+            $viewFile = $path . "/" . $name . ".l" . ".php";
+            if(file_exists($viewFile)){
+                Log::debug( "Using layout file : ( " . $viewFile ." ) " );
+                return $viewFile;
+            }
+        }
+
+        return false;
     }
 
     protected function _getViewFile($name, $isModule=true) {
@@ -437,11 +485,9 @@ class Route {
     function __construct($pattern, $uri, $callable=null, $params=array(), $methods=array()){
 
         $this->pattern = $pattern;
-        $this->callable=$callable;
-        $this->methods=$methods;
+        $this->callable = $callable;
+        $this->methods = $methods;
 
-
-        //$this->params = array();
         $this->params = $params;
 
         $p_names = array(); $p_values = array();
@@ -481,7 +527,11 @@ class Route {
 
 class Params implements \ArrayAccess {
 
-    private $_container = array();
+    private $_container = null;
+
+    public function __construct($default=array()){
+        $this->_container= is_array( $default ) ? $default : array();
+    }
 
     public function offsetSet($offset, $value) {
         $this->_container[$offset] = $value;
@@ -505,63 +555,12 @@ class Params implements \ArrayAccess {
     }
 
     public function merge($array){
-        $this->_container= array_merge($this->_container, $array);
-    }
-}
-
-/*
- class Router {
-    public $request_uri;
-    public $routes;
-    public $controller, $controller_name;
-    public $action, $id;
-    public $params;
-    public $route_found = false;
-
-    public function __construct() {
-        $request = $_SERVER['REQUEST_URI'];
-        $pos = strpos($request, '?');
-        if ($pos) $request = substr($request, 0, $pos);
-
-        $this->request_uri = $request;
-        $this->routes = array();
-    }
-
-    public function map($rule, $target=array(), $conditions=array()) {
-        $this->routes[$rule] = new Route($rule, $this->request_uri, $target, $conditions);
-    }
-
-    public function default_routes() {
-        $this->map('/:controller');
-        $this->map('/:controller/:action');
-        $this->map('/:controller/:action/:id');
-    }
-
-    private function set_route($route) {
-        $this->route_found = true;
-        $params = $route->params;
-        $this->controller = $params['controller']; unset($params['controller']);
-        $this->action = $params['action']; unset($params['action']);
-        $this->id = $params['id'];
-        $this->params = array_merge($params, $_GET);
-
-        if (empty($this->controller)) $this->controller = ROUTER_DEFAULT_CONTROLLER;
-        if (empty($this->action)) $this->action = ROUTER_DEFAULT_ACTION;
-        if (empty($this->id)) $this->id = null;
-
-        $w = explode('_', $this->controller);
-        foreach($w as $k => $v) $w[$k] = ucfirst($v);
-        $this->controller_name = implode('', $w);
-    }
-
-    public function execute() {
-        foreach($this->routes as $route) {
-            if ($route->is_matched) {
-                $this->set_route($route);
-                break;
-            }
+        if(is_array($array)) {
+            $this->_container= array_merge($this->_container, $array);
         }
     }
-}
 
- */
+    public function toArray(){
+        return $this->_container;
+    }
+}
