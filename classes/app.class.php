@@ -343,18 +343,21 @@ class App {
         } else {    //Load Controller
             $this->_currentPattern = $route->pattern;
 
-            $layout = isset($route->params["layout"])?$route->params["layout"]:"default";
-            $layoutFile = $this->_getLayoutFile($layout);
-            $hasLayout = !!$layoutFile;
-            Log::debug("Layout request => $layout ");
-            if( $hasLayout ) {
-                Log::debug("Using Layout File => $layoutFile ");
-                $controller = new Controller( $layoutFile, $params, $this );
-                $controller->setVar("page", $route->callable);
-                $controller->render();
-            } else {
-                $this->_routeUsed = $this->render($route->callable, $route->params, false);
-            }
+            $layout = isset($route->params["layout"])?$route->params["layout"]: $this->config("layout");
+	    if($layout) {
+                $layoutFile = $this->_getLayoutFile($layout);
+                $hasLayout = !!$layoutFile;
+                Log::debug("Layout request => $layout ");
+		if( $hasLayout ) {
+		    Log::debug("Using Layout File => $layoutFile ");
+		    $controller = new Controller( $layoutFile, $params, $this );
+		    $controller->setVar("page", $route->callable);
+		    $controller->render();
+		    $this->_routeUsed=true;
+		    return;
+		}
+	    }	
+            $this->_routeUsed = $this->render($route->callable, $route->params, false);
         }
     }
 

@@ -5,15 +5,13 @@
 $routes = array(
     
     "*"     => array(
-        "title"             => "Site Test",
-        "cache"             => false,
-        "rewrite"           => false,
-        "packed_resources"  =>  false,
+        "title"     => "Site Test",
+        "cache"     => false,
+        "rewrite"   => false,
+        "packed_resources" =>  false,
         "packed_resources_path" =>  dirname(__FILE__) . "/statics",
         "packed_resources_url" =>  "statics",
         "path" => dirname(__FILE__),
-
-        "layout"            => "default",
     ),
     
     //HOME
@@ -23,7 +21,8 @@ $routes = array(
         "meta_description"      => "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
         "meta_keywords"         => "Lorem, ipsum, dolor, sit, amet, consectetur, adipisicing",
 
-        "page"                  => "home",        
+        "page"                  => "home",
+        "layout"                => "default"
     ),
 
     "/contact"     =>      array(
