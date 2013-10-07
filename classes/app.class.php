@@ -44,6 +44,11 @@ class App {
 
     public function map($pattern, $callable, $params=array(), $methods=array()){
 
+        if( $pattern[0] != "/" ) {
+            $pattern = "/$pattern";
+        }
+        //Log::debug("Using pattern: $pattern");
+
         $realParams = new Params($params);
         $realParams->merge($this->_mapParams);
 
@@ -74,6 +79,11 @@ class App {
         if(!is_array($params)){
             $params=array();
         }
+
+        if( ( $pos = strpos($name, ":") ) !== false ) {
+            $params["type"] = substr($name, $pos+1);
+            $name = substr($name, 0, $pos);
+        }        
 
         $viewFile = $this->_getViewFile($name, $isModule);
         $hasView = !!$viewFile;
@@ -141,7 +151,6 @@ class App {
         $result = clone $route->params;
         $result->merge(array( "page" => $route->callable ));
         return $result;
-        //return array_merge( array( "page" => $route->callable ), $route->params ) ;
     }
 
     public function route( $routes = array() ) {
@@ -225,6 +234,10 @@ class App {
     public function setPath($path) {
         $this->config("path", $path);
     }
+
+    public function getUrlParts(){
+        return $this->_url;
+    }    
 
     public function getUrl() {
         return $this->config("url");
