@@ -76,14 +76,12 @@ class App {
 
     public function render($name, $params=array(), $isModule=true) {
 
-        if(!is_array($params)){
-            $params=array();
-        }
+        $params=new Params($params);
 
         if( ( $pos = strpos($name, ":") ) !== false ) {
             $params["type"] = substr($name, $pos+1);
             $name = substr($name, 0, $pos);
-        }        
+        }
 
         $viewFile = $this->_getViewFile($name, $isModule);
         $hasView = !!$viewFile;
@@ -130,13 +128,19 @@ class App {
 
     // Pages management
 
-    public function pageUrl($page) {
+    public function pageUrl($page, $params=array()) {
         $url = $this->config("url_base");
         if(!$this->config("rewrite")) {
             $url.="/index.php";
         }
-        $url.=$this->_r_pages[$page];
-        return $url;
+        $pattern=$this->_r_pages[$page];
+        if($params) {
+            foreach ($params as $key => $value) {                
+                $value = str_replace(" ", "_", $value);
+                $pattern=str_replace(":$key", $value, $pattern);
+            }
+        }        
+        return $url.$pattern;        
     }
 
     public function pageParams($page=false) {
@@ -227,7 +231,7 @@ class App {
     // Deprecated
     //
 
-    public function getPath() {
+    public function getPath() {        
         return $this->config("path");
     }
 
@@ -346,6 +350,8 @@ class App {
 
         $this->_routeUsed = true;
         $params = $route->params;
+        Log::debug("Route params:");
+        Log::debug($params);
         $callable = $route->callable;
         if(!$callable) {
             Log::warn("Not callable or controller for this map: ". $route->pattern );
@@ -357,19 +363,19 @@ class App {
             $this->_currentPattern = $route->pattern;
 
             $layout = isset($route->params["layout"])?$route->params["layout"]: $this->config("layout");
-	    if($layout) {
+    	    if($layout) {
                 $layoutFile = $this->_getLayoutFile($layout);
                 $hasLayout = !!$layoutFile;
                 Log::debug("Layout request => $layout ");
-		if( $hasLayout ) {
-		    Log::debug("Using Layout File => $layoutFile ");
-		    $controller = new Controller( $layoutFile, $params, $this );
-		    $controller->setVar("page", $route->callable);
-		    $controller->render();
-		    $this->_routeUsed=true;
-		    return;
-		}
-	    }	
+        		if( $hasLayout ) {
+        		    Log::debug("Using Layout File => $layoutFile ");
+        		    $controller = new Controller( $layoutFile, $params, $this );
+        		    $controller->setVar("page", $route->callable);
+        		    $controller->render();
+        		    $this->_routeUsed=true;
+        		    return;
+        		}
+    	    }
             $this->_routeUsed = $this->render($route->callable, $route->params, false);
         }
     }
@@ -546,7 +552,14 @@ class Params implements \ArrayAccess {
     private $_container = null;
 
     public function __construct($default=array()){
-        $this->_container= is_array( $default ) ? $default : array();
+        if(is_array($default) ) {
+            $this->_container=$default;
+        } else if( $default instanceof Params) {
+            $this->_container=$default->toArray();
+        } else {
+            $this->_container=array();
+        }
+        //$this->_container= is_array( $default ) ? $default : array();
     }
 
     public function offsetSet($offset, $value) {
@@ -571,7 +584,7 @@ class Params implements \ArrayAccess {
     }
 
     public function merge($array){
-        if(is_array($array)) {
+        if(is_array($array)) {            
             $this->_container= array_merge($this->_container, $array);
         }
     }
