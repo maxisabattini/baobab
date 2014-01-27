@@ -49,14 +49,14 @@ class App {
         }
         //Log::debug("Using pattern: $pattern");
 
-        $realParams = new Params($params);
+        $realParams = new Param($params);
         $realParams->merge($this->_mapParams);
 
         $this->_routes[$pattern] = new Route($pattern, $this->_mapUri, $callable, $realParams, $methods);
 
         if(! is_callable($callable) ) {
             $this->_pages[$pattern]=$callable;
-            $this->_r_pages[$callable]=$pattern;
+            $this->_reverse_routes[$callable]=$pattern;
         }
     }
 
@@ -76,14 +76,10 @@ class App {
 
     public function render($name, $params=array(), $isModule=true) {
 
-        if(!is_array($params)){
-            $params=array();
-        }
-
         if( ( $pos = strpos($name, ":") ) !== false ) {
             $params["type"] = substr($name, $pos+1);
             $name = substr($name, 0, $pos);
-        }        
+        }
 
         $viewFile = $this->_getViewFile($name, $isModule);
         $hasView = !!$viewFile;
@@ -119,41 +115,41 @@ class App {
         }
 
         if( ! $hasView && ! $hasController ) {
-             Log::warn( ($isModule ? 'MODULE' : 'PAGE') ." => $name not executed");
-             return false;
+            Log::warn( ($isModule ? 'MODULE' : 'PAGE') ." => $name not executed");
+            return false;
         } else {
-            $controller->app = $this;
+            //$controller->app = $this;
             $controller->render();
         }
         return true;
     }
 
-    // Pages management
+    // Routes management
 
-    public function pageUrl($page) {
+    public function getRouteUrl($route) {
         $url = $this->config("url_base");
         if(!$this->config("rewrite")) {
             $url.="/index.php";
         }
-        $url.=$this->_r_pages[$page];
+        $url.=$this->_reverse_routes[$route];
         return $url;
     }
 
-    public function pageParams($page=false) {
+    public function getRouteParams($route=false) {
 
-        if(!$page) {
-            $route = $this->_routes[ $this->_currentPattern ];
+        if(!$route) {
+            $theRoute = $this->_routes[ $this->_currentPattern ];
         } else {
-            $pattern = $this->_r_pages[$page];
-            $route = $this->_routes[$pattern];
+            $pattern = $this->_reverse_routes[$route];
+            $theRoute = $this->_routes[$pattern];
         }
 
-        $result = clone $route->params;
-        $result->merge(array( "page" => $route->callable ));
+        $result = clone $theRoute->params;
+        $result->merge(array( "page" => $theRoute->callable ));
         return $result;
     }
 
-    public function route( $routes = array() ) {
+    public function route( $routes=array() ) {
 
         foreach($routes as $k=>$v) {
 
@@ -185,8 +181,8 @@ class App {
 
         if( ! $this->_routeUsed ) {
             $page404='404';
-            if( isset( $this->_r_pages[$page404] ) ) {
-                $pattern = $this->_r_pages[$page404];
+            if( isset( $this->_reverse_routes[$page404] ) ) {
+                $pattern = $this->_reverse_routes[$page404];
                 $route = $this->_routes[$pattern];
                 $this->_executeRoute($route);
             } else {
@@ -194,38 +190,6 @@ class App {
             }
         }
 	}
-
-    // Template management
-
-    private $_sections = array();
-	
-    public function startSection($name) {
-        ob_start();
-        $this->_sections[$name]="";
-    }
-
-    public function endSection($name) {
-        $this->_sections[$name]= ob_get_clean();
-    }
-	
-    public function addSection($name, $content) {
-        $this->_sections[$name]=$content;
-    }
-
-    public function removeSection($name) {
-        unset($this->_sections[$name]);
-    }
-
-    public function getSection($name) {
-        return $this->_sections[$name];
-    }
-	
-    public function renderAsTemplate($view, $params = array() ) {		
-            $this->render( $view, array_merge($this->_sections, $params) );
-    }
-
-    // Deprecated
-    //
 
     public function getPath() {
         return $this->config("path");
@@ -235,33 +199,30 @@ class App {
         $this->config("path", $path);
     }
 
-    public function getUrlParts(){
-        return $this->_url;
-    }    
-
-    public function getUrl() {
-        return $this->config("url");
+    public function getUrl( $base=true ) {
+    	if($base) {
+    		return $this->config("url_base");
+    	} else {
+    		return $this->config("url");
+    	}
     }
 
-
-    public function getUrlBase() {
-        return $this->config("url_base");
+    public function getUri(){
+    	return $this->_uri;
     }
-
-    // END Deprecated
-    //
+   
 
     // Private members
 
     protected static $_instances = array();
 
-    protected $_url= array();
+    protected $_uri = null;
 
     protected $_routes = array();
     protected $_routeUsed = false;
 
     protected $_pages = array();
-    protected $_r_pages = array();
+    protected $_reverse_routes = array();
 
     protected $_currentPattern = null;
 
@@ -289,34 +250,31 @@ class App {
                 "layouts"
             ),
         );
-        $this->_config = new Params($defaults);
+        
+        $this->_config = new Param($defaults);
         $this->config("name", $name);
 
         $baobabPath = dirname ( dirname(__FILE__) );
         $_path = dirname(dirname(dirname( $baobabPath ) ) );
         $this->config("path", $_path);
 
-        $this->_url = new Url();
+        $this->_uri = new Uri();
+        Log::debug("URI: ");
+        Log::debug($this->_uri);
+        $this->config("url", $this->_uri->toString());
 
-        Log::debug("URL Base: ");
-        Log::debug($this->_url);
-
-        $_url = $this->_url->toString();
-
-        $this->config("url", $_url);
-
-        $path = $this->_url["path"];
+        $path = $this->_uri["path"];
         if( $pos = strpos($path, "index.php") ){
             $path = substr($path, 0, $pos);
         }
 
-        $_urlBase = $this->_url->toString(array("port"=> "", "path"=>$path, "query"=>"", "fragment"=>""));
-        $this->config("url_base", $_urlBase);
+        $uri = clone $this->_uri;
+        $urlBase = $uri->toString(array("port"=> "", "path"=>$path, "query"=>"", "fragment"=>""));
+        $this->config("url_base", $urlBase);
 
-	    //Log::debug("URL Base: " . $_urlBase);
-
-        $url = $this->_url;
-        $query = $url["query"];
+	    Log::debug("URL Base: " . $urlBase);
+        
+        $query = $this->_uri["query"];
 
         //Remove index.php -> no rewrite mode
         if( strpos($query, "index.php") === 0 ){
@@ -337,7 +295,6 @@ class App {
             $query = substr( $query, 0, $pos);
         }
 
-
         $this->_mapUri = "/" . $query;
         Log::debug("Map Uri: ". $this->_mapUri );
     }
@@ -352,24 +309,26 @@ class App {
         }
 
         if(is_callable($callable)) {
-            $callable($params);
+            $response=$callable($params);
+            if( $response instanceof Response ) {
+            	$response->apply();
+            }
         } else {    //Load Controller
             $this->_currentPattern = $route->pattern;
-
             $layout = isset($route->params["layout"])?$route->params["layout"]: $this->config("layout");
-	    if($layout) {
+            if($layout) {
                 $layoutFile = $this->_getLayoutFile($layout);
                 $hasLayout = !!$layoutFile;
                 Log::debug("Layout request => $layout ");
-		if( $hasLayout ) {
-		    Log::debug("Using Layout File => $layoutFile ");
-		    $controller = new Controller( $layoutFile, $params, $this );
-		    $controller->setVar("page", $route->callable);
-		    $controller->render();
-		    $this->_routeUsed=true;
-		    return;
-		}
-	    }	
+                if( $hasLayout ) {
+                    Log::debug("Using Layout File => $layoutFile ");
+                    $controller = new Controller( $layoutFile, $params, $this );
+                    $controller->setVar("page", $route->callable);
+                    $controller->render();
+                    $this->_routeUsed=true;
+                    return;
+                }
+            }	
             $this->_routeUsed = $this->render($route->callable, $route->params, false);
         }
     }
@@ -430,59 +389,109 @@ class App {
     }
 }
 
-class Url implements \ArrayAccess {
+class Param implements \ArrayAccess {
 
-    private $_container = array();
+	private $_container = null;
+
+	public function __construct($default=array()){
+		$this->_container= is_array( $default ) ? $default : array();
+	}
+
+	/*
+	 * Array Access
+	*/
+
+	public function offsetSet($offset, $value) {
+		$this->_container[$offset] = $value;
+	}
+
+	public function offsetExists($offset) {
+		return isset($this->_container[$offset]);
+	}
+
+	public function offsetUnset($offset) {
+		unset($this->_container[$offset]);
+	}
+
+	public function offsetGet($offset) {
+		if(!isset($this->_container[$offset]) ) {
+			Log::warn("Param not set: " . $offset);
+			return null;
+		} else {
+			return $this->_container[$offset];
+		}
+	}
+
+	/*
+	 * Object Access
+	*/
+
+	public function __get($key){
+		return $this->offsetGet($key);
+	}
+
+	public function __set($key, $value){
+		$this->offsetSet($key, $value);
+	}
+
+	/*
+	 * Common
+	*/
+
+	public function merge( $input ){
+		if( is_object($input) ) {
+			$this->_container=array_merge($this->_container, (array) $input);
+		}
+		if(is_array($input)) {
+			$this->_container=array_merge($this->_container, $input);
+		}
+	}
+
+	public function toArray(){
+		return $this->_container;
+	}
+
+	public function toObject(){
+		return (object) $this->_container;
+	}
+}
+
+class Uri extends Param {
 
     public function __construct() {
+    	parent::__construct();
 
-        $this->_container["scheme"]='http';
+        $this->scheme='http';
         if ( isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") {
-            $this->_container["scheme"]='https';
+            $this->scheme='https';
         }
-        $this->_container["host"]=$_SERVER['HTTP_HOST'];
-        $this->_container["port"]=$_SERVER["SERVER_PORT"];
+        $this->host=$_SERVER['HTTP_HOST'];
+        $this->port=$_SERVER["SERVER_PORT"];
 
         $self = $_SERVER['PHP_SELF'];
         $uri = $_SERVER['REQUEST_URI'];
         $pos = strrpos($self, "/");
-        $this->_container["user"]="";
-        $this->_container["pass"]="";
-        $this->_container["path"]=substr($self, 0, $pos+1);
-        $this->_container["query"]=(string) substr($uri, $pos+1);      //?adasd
-        $this->_container["fragment"]="";  //#adas    only with js
+        $this->user="";
+        $this->pass="";
+        $this->path=substr($self, 0, $pos+1);
+        $this->query=(string) substr($uri, $pos+1);      //?adasd
+        $this->fragment="";  //#adas    only with js
     }
 
-    public function toString($parts=array()) {
-        $container = array_merge($this->_container, $parts);
+    public function toString($overrides=array()) {        
+        $this->merge($overrides);
 
-        $pageURL = $container["scheme"]."://".$container["host"].$container["path"].$container["query"];
-        if( $container["port"] && $container["port"]!=80  ) {
-            $pageURL .= ":" . $container["port"];
+        $pageURL = $this->scheme ."://".$this->host . $this->path . $this->query;
+        if( $this->port && $this->port!=80  ) {
+            $pageURL .= ":" . $this->port;
         }
         if( substr( $pageURL, -1) === "/" ) {
             $pageURL = substr( $pageURL, 0, strlen($pageURL) - 1 );
         }
 
-    	Log::info("UrlParts::toString");
+    	Log::info("Uri::toString()");
 	    Log::debug($pageURL);
         return $pageURL;
-    }
-
-    public function offsetSet($offset, $value) {
-        $this->_container[$offset] = $value;
-    }
-
-    public function offsetExists($offset) {
-        return isset($this->_container[$offset]);
-    }
-
-    public function offsetUnset($offset) {
-        unset($this->_container[$offset]);
-    }
-
-    public function offsetGet($offset) {
-        return isset($this->_container[$offset]) ? $this->_container[$offset] : null;
     }
 }
 
@@ -498,7 +507,7 @@ class Route {
 
     public $isMatched = false;
 
-    function __construct($pattern, $uri, $callable=null, $params=array(), $methods=array()){
+    function __construct($pattern, $url, $callable=null, $params=array(), $methods=array()){
 
         $this->pattern = $pattern;
         $this->callable = $callable;
@@ -511,10 +520,21 @@ class Route {
         preg_match_all('@:([\w]+)@', $pattern, $p_names, PREG_PATTERN_ORDER);
         $p_names = $p_names[0];
 
-        $url_regex = preg_replace_callback('@:[\w]+@', array($this, 'regex_url'), $pattern);
+        $conditions=$this->conditions;
+		$regex_url = function($matches) use ($conditions) {
+	    	$key = str_replace(':', '', $matches[0]);
+	    	if (array_key_exists($key, $conditions)) {
+	    		return '('.$conditions[$key].')';
+	    	}
+	    	else {
+	    		return '([a-zA-Z0-9_\+\-%]+)';
+	    	}
+	    };
+
+        $url_regex = preg_replace_callback('@:[\w]+@', $regex_url, $pattern);
         $url_regex .= '/?';
 
-        if (preg_match('@^' . $url_regex . '$@', $uri, $p_values)) {
+        if (preg_match('@^' . $url_regex . '$@', $url, $p_values)) {
             array_shift($p_values);
 
             foreach($p_names as $index => $value) $this->params[substr($value,1)] = urldecode($p_values[$index]);
@@ -530,6 +550,7 @@ class Route {
 
     public function matches($uri){}
     
+    /*
     function regex_url($matches) {
     	$key = str_replace(':', '', $matches[0]);
     	if (array_key_exists($key, $this->conditions)) {
@@ -539,44 +560,130 @@ class Route {
     		return '([a-zA-Z0-9_\+\-%]+)';
     	}
     }
+    */
 }
 
-class Params implements \ArrayAccess {
+class Request {
 
-    private $_container = null;
+	public function isPost() {
+		return $this->_method=="post";
+	}
 
-    public function __construct($default=array()){
-        $this->_container= is_array( $default ) ? $default : array();
-    }
+	public function isGet() {
+		return $this->_method=="get";
+	}
 
-    public function offsetSet($offset, $value) {
-        $this->_container[$offset] = $value;
-    }
+	public function isPut() {
+		return $this->_method=="put";
+	}
 
-    public function offsetExists($offset) {
-        return isset($this->_container[$offset]);
-    }
+	public function isDelete() {
+		return $this->_method=="delete";
+	}
 
-    public function offsetUnset($offset) {
-        unset($this->_container[$offset]);
-    }
+	public function isSecure(){
+		if ( isset($_SERVER['HTTPS']) ) {
+	        if ( 'on' == strtolower($_SERVER['HTTPS']) )
+	            return true;
+	        if ( '1' == $_SERVER['HTTPS'] )
+	            return true;
+	    } elseif ( isset($_SERVER['SERVER_PORT']) && ( '443' == $_SERVER['SERVER_PORT'] ) ) {
+	        return true;
+	    }
+	    return false;
+	}
 
-    public function offsetGet($offset) {
-        if(!isset($this->_container[$offset]) ) {
-            Log::warn("Config/Param not set: " . $offset);
-            return null;
-        } else {
-            return $this->_container[$offset];
+	public function isAjax() {
+		return $_isAjax;
+	}
+
+	public function getMethod(){
+		return strtoupper($this->_method);
+	}
+
+	public function getVar($name) {
+		return isset($_REQUEST[$name])?$_REQUEST[$name]:null;
+	}
+
+	public function getHeader($name) {		
+		return isset($this->_headers[$name])?$this->_headers[$name]:null;	
+	}
+
+	public function hasFiles(){
+		//TODO:
+		return false;
+	}
+
+	public function getFiles(){
+		//TODO:
+		return false;
+	}
+
+	public function getServerAddress() {
+		//TODO:
+		return false;	
+	}
+
+	public function getClientAddress() {
+		//TODO:
+		return false;	
+	}
+
+	public function getAcceptableContent() {
+		//TODO:
+		return false;	
+	}
+
+    public static function getInstance() {
+        if(!self::$_instance) {
+            self::$_instance = new self();
         }
+        return self::$_instance;
     }
 
-    public function merge($array){
-        if(is_array($array)) {
-            $this->_container= array_merge($this->_container, $array);
-        }
+	protected static $_instance;
+
+	private $_method='';
+	private $_isAjax=false;
+	private $_headers=array();
+
+	private function __construct() {
+		//Method
+		$this->_method = strlower($_SERVER['REQUEST_METHOD']);
+
+
+		$this->_isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+
+		//Headers		
+		foreach ($_SERVER as $key => $value) {
+ 		   	if (strpos($key, 'HTTP_') === 0) {
+ 		   		$_key=str_replace('_', ' ', substr($key, 5));
+				$this->_headers[$_key]=$value;
+ 		   	}
+ 		}        
     }
 
-    public function toArray(){
-        return $this->_container;
-    }
 }
+
+public class Response {
+
+	public function setHeader() {
+	}
+
+	public function setExpires() {
+	}
+
+	public function setContent() {
+	}
+
+	public function redirect($url) {
+	}
+
+	public function apply($response=null) {
+	}
+
+	private function __construct() {
+	}
+}
+

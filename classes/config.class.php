@@ -4,53 +4,36 @@ namespace baobab;
 
 class Config {
 
-	private static $_instance;	
-	private $_settings;
-
-	public static function getInstance() {
-		if ( ! isset(self::$_instance)) {
-			self::$_instance = new self();
-		}
-		return self::$_instance;
-	}
-
-	private function __construct() {
-		$this->init();
-	}
-
-	private function init() {
-		$cfg = array () ; 
-
-		$files = $this->getConfigFilesList();
-		foreach ($files as $file) 
-		{
-			$this->loadCfgFile( $file );
-		}
-	}
-
-	private function getConfigFilesList() {
-		$files = array ();
-
-        if(! defined("BAO_PATH") ) {
-            define("BAO_PATH", "");
+    public function __construct($name = 'default') {
+        if($name=="global") {
+            $this->_initGlobal();
         }
+        $this->_name=$name;
+    }
 
-		$dir = BAO_PATH . '/cfg/';
+    public static function getInstance($name = 'global') {
+        if( ! isset(self::$_instances[$name]) ) {
+            self::$_instances[$name] = new self($name);
+        }
+        return self::$_instances[$name];
+    }
 
-		if ( is_dir($dir)) {
-		    if ($dh = opendir($dir)) {
-				while (($file = readdir($dh)) !== false) {
-					if ( ! is_dir($dir . $file) && substr($file, -4, 4) == '.php') 
-						$files[] = $dir . $file; 
-				}
-				closedir($dh);
-				sort($files); 
-		    }
-		}
-		return $files;
-	}
-	
-	public function loadCfgFile( $file ) {
+    public function has($key) {
+        return isset($this->_settings[$key]);
+    }        
+    
+    public function get($key, $default=null) {
+        if (!isset($this->_settings[$key])) {
+            return $default;
+        } 
+        return $this->_settings[$key];
+    }
+    
+    public function set($key, $value) {
+        $this->_settings[$key] = $value;
+    }
+    
+    public function loadFile( $file ) {
 
         if ( ! file_exists( $file )) return false ;
 
@@ -72,19 +55,59 @@ class Config {
         }
 
         return false;
-	}
+    }	
+
+
+    /*
+    * Private members
+    **/
+    
+    private static $_instances;
+    private $_name;
+    private $_settings;
+    
+    private function _initGlobal() {
+        $cfg = array(); 
+
+        $files = $this->_getConfigFilesList();
+        foreach ($files as $file) {
+            $this->loadFile( $file );
+        }
+    }
+
+    private function _getConfigFilesList() {
+        $files = array ();
+
+        if(! defined("BAO_PATH") ) {
+            define("BAO_PATH", "");
+        }
+
+        $dir = BAO_PATH . '/cfg/';
+
+        if ( is_dir($dir)) {
+            if ($dh = opendir($dir)) {
+                while (($file = readdir($dh)) !== false) {
+                    if ( ! is_dir($dir . $file) && substr($file, -4, 4) == '.php') 
+                        $files[] = $dir . $file; 
+                }
+                closedir($dh);
+                sort($files); 
+            }
+        }
+        return $files;
+    }
 
     private function _loadPhpFile($file) {
-		$cfg = array();
+        $cfg = array();
 
         $result = include ( $file );
-		
-		if(!$cfg && is_array($result) ) {
-			$cfg = &$result;
-		}
+        
+        if(!$cfg && is_array($result) ) {
+            $cfg = &$result;
+        }
 
         foreach ($cfg as $key => $val ) {
-            $this->_set($key, $val);
+            $this->set($key, $val);
         }
         return true;
     }
@@ -94,7 +117,7 @@ class Config {
         $configs = parse_ini_file($file);
 
         foreach ($configs as $key => $val ) {
-            $this->_set($key, $val);
+            $this->set($key, $val);
         }
         return true;
     }
@@ -104,21 +127,8 @@ class Config {
         $configs = json_decode($file, true);
 
         foreach ($configs as $key => $val ) {
-            $this->_set($key, $val);
+            $this->set($key, $val);
         }
         return true;
     }
-
-	public static function get($name, $default=null) {
-		return self::getInstance()->_get($name, $default);
-	}
-
-	private function _set($name, $value) {
-		$this->_settings[$name] = $value;
-	}
-
-	private function _get($name, $default) {
-		if (!isset($this->_settings[$name])) return $default;
-		return $this->_settings[$name];
-	}
 }

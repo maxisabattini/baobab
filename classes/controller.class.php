@@ -25,6 +25,7 @@ class Controller {
 		$this->view = $view;
     }
 
+    /*
     public function exposeVarsAsGlobals() {
         //Expose vars
         foreach( $this->vars as $fieldName => $fieldValue ) {
@@ -32,6 +33,7 @@ class Controller {
             $$fieldName = $fieldValue;
         }
     }
+    */
 
     public function render($name="", $params=array(), $isModule=true) {
 

@@ -4,7 +4,7 @@ namespace baobab;
 
 class Cache {
 
-	protected static $_instance;
+    protected static $_instance;
 
     protected $_link;
     protected $_isEnabled=false;
@@ -19,7 +19,7 @@ class Cache {
                 Log::WARN("Can not connect to MEMCACHE service");
             }
         } else {
-            Log::WARN("No exist MEMCACHE class");
+            Log::WARN("No exist MEMCACHE class");            
         }
     }
     
@@ -30,36 +30,41 @@ class Cache {
         return self::$_instance;
     }
     
-    public function get($var, $default=null, $duration=600 ) {
-
-        if(! $this->_isEnabled) {
-            $result=$default;
-            if(is_callable($default)) {
-                $result = $default( $var );
-            }
+    public function has() {
+        return !!$this->get($key);
+    }
+    
+    public function get($key, $callable=null, $duration=600 ) {
+    
+        $result = null;
+        
+        if( $this->_isEnabled ) {
+            $result = $this->_link->get( $key );
+        }
+        
+        if( $result ) {
             return $result;
         }
-
-        $result = $this->_link->get( $var );
-        if(!$result) {
-            $result=&$default;
-            if(is_callable($default)) {
-                $result = $default( $var );
-                $this->set( $var, $result, $duration );
+        
+        if(is_callable($callable)) {
+            $result = $callable( $key );
+            if( ! is_null($result) ) {
+                $this->set( $key, $result, $duration );            
             }
         }
+    
         return $result;
     }
     
-    public function set($var, $value, $duration=600 ) {
+    public function set($key, $value, $duration=600 ) {
         if($this->_isEnabled) {
-            $this->_link->set($var, $value, false, $duration);
+            $this->_link->set($key, $value, false, $duration);
         }
     }
     
-    public function drop($var) {
+    public function drop($key) {
         if($this->_isEnabled) {
-            $this->_link->delete($var);
+            $this->_link->delete($key);
         }
     }
 

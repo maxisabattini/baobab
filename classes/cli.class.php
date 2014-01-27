@@ -7,7 +7,7 @@ class Cli {
     protected $_out;
     protected $_in;
 
-    protected $name = "Cli";
+    protected $_name = "Cli";
 
     protected $_silent = false;
     protected $_params = false;
@@ -17,7 +17,7 @@ class Cli {
             if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                     $this->_out = new OutCmd();
             } else {
-                    $this->_out = new OutCmdLinux();
+                    $this->_out = new CliOutputCmdLinux();
             }
         } else {
             $this->_out = new OutWeb();
@@ -27,6 +27,15 @@ class Cli {
 		}
     }
 
+    public function __call($method, $args) {    	
+    	if( substr($method, 0, strlen("write")) == "write" ) {
+    		$tag = substr($method, strlen("write") );
+    		$value = isset($args[0]) ? $args[0] : "" ;
+    		$arguments = isset($args[1]) ? $args[1] : "" ;
+    		$this->_out->write($tag, $value, $arguments);
+    	}    	
+    }
+    
     /*
      * CMD mode;                WEB mode;
      *
@@ -39,7 +48,7 @@ class Cli {
     /**
      * @return array
      */
-    public function getAllParams(){
+    protected function getParams(){
         $this->getParam("");
         return $this->_params;
     }
@@ -88,6 +97,9 @@ class Cli {
         return $this->getParam($param) !== null;
     }
 
+    
+    /*
+    
     public function out( $string, $args=array() ){
         if(!$this->_silent) {
             $this->_out->out($string, $args);
@@ -130,6 +142,8 @@ class Cli {
         }
     }
 
+*/
+    
     public function execute(){
         if(!$this->_silent) {
             $this->_out->outHeader($this->name);
@@ -142,45 +156,64 @@ class Cli {
         if(!$this->_silent) {
             $this->_out->outFooter();
         }            
-    }
+    }    
 
     protected function executeReal(){
             $this->out("Override me!");
     }
+    
 }
 
 
-class OutCmdLinux {
+interface CliOutput {	
+	public function write( $tag, $value, $args=array()){}
+}
 
-    public function outHeader($string){
-        print "\033[0m";
-        print "\033[1m";
-        $this->out("\n" . $string . "\n" );
-        print "\033[0m";
-        //$this->out( str_pad("", strlen($string), "=" ) );
-        print "\n";
-    }
+class CliOutputCmdLinux implements CliOutput {	
+	
+	public function write($tag, $value, $args=array()){
+		switch($tag) {
+									
+			case "Header":
+				print "\033[0m";
+				print "\033[1m";
+				$this->out("\n" . $string . "\n" );
+				print "\033[0m";				
+				print "\n";
+			break;
 
-    public function outFooter(){
-        $this->out("\n");
-        print "\033[0m\n";
-    }
+			case "Footer":
+				$this->out("\n");
+				print "\033[0m\n";
+			break;
 
-	public function out($string, $args=array() ){
+			case "Head":
+		        print "\033[0m";
+				print "\033[32m";
+		        print "\033[1m";
+				$this->out($string, $args);
+				print "\033[0m\n";
+			break;
+
+			case "Paragraph":
+		        print "\033[0m";
+		        print "\n\033[32m";
+		        $this->out($string, $args);
+		        print "\033[0m\n";				
+			break;				
+			
+			default:
+				$this->out($value, $arg);
+		}
+	}
+	
+	private function out($string, $args=array() ){
 		if( $args ) {
 			print vsprintf($string, $args );
 		} else {
 			print $string;
 		}
-	}
-
-	public function outHead($string, $args=array()){
-        print "\033[0m";
-		print "\033[32m";
-        print "\033[1m";
-		$this->out($string, $args);
-		print "\033[0m\n";
-	}
+	}	
 
     public function outLine($string, $args=array(), $mode="none"){
         print "\033[0m";
@@ -213,15 +246,7 @@ class OutCmdLinux {
         $this->out($string, $args);        
         print "\n";
     }
-
-    public function outParagraph($string, $args=array()){
-        print "\033[0m";
-        print "\n\033[32m";
-        $this->out($string, $args);
-        print "\033[0m\n";
-    }
-
-
+    
     public function outObject($obj ,$hideEmpty=false){
 		$vars=false;
 		if( is_object($obj) ) {
