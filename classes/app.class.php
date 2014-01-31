@@ -318,6 +318,8 @@ class App {
 
         $this->_routeUsed = true;
         $params = $route->params;
+        Log::debug("Route params:");
+        Log::debug($params);
         $callable = $route->callable;
         if(!$callable) {
             Log::warn("Not callable or controller for this map: ". $route->pattern );

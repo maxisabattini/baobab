@@ -4,15 +4,15 @@ namespace baobab;
 
 class Controller {
 
-	protected $params;
-    protected $view;
-    protected $vars = array();
+	protected $_params;
+    protected $_view;
+    //protected $vars = array();
 
     public $app=null;
 
 	public function __construct( $view, $params = array(), $app=null ) {
-		$this->params = $params;
-		$this->view = $view;
+		$this->_params = new Parameters($params);
+		$this->_view = $view;
 
         if(!$app) {
             $this->app=App::getInstance();
@@ -22,18 +22,8 @@ class Controller {
     }
 
     public function setView($view){
-		$this->view = $view;
+		$this->_view = $view;
     }
-
-    /*
-    public function exposeVarsAsGlobals() {
-        //Expose vars
-        foreach( $this->vars as $fieldName => $fieldValue ) {
-            global $$fieldName;
-            $$fieldName = $fieldValue;
-        }
-    }
-    */
 
     public function render($name="", $params=array(), $isModule=true) {
 
@@ -59,35 +49,33 @@ class Controller {
 				}
 			}
 		}
+		$this->_params->merge($params);
 
         //Expose vars
-        foreach( $this->params as $fieldName => $fieldValue ) {
+        foreach( $this->_params->toArray() as $fieldName => $fieldValue ) {
             $$fieldName = $fieldValue;
         }
-        foreach( $this->vars as $fieldName => $fieldValue ) {
-            $$fieldName = $fieldValue;
-        }
-		
+
         //Render
-        if( $this->view ) {
-            include $this->view;
+        if( $this->_view ) {
+            include $this->_view;
         }
     }
 
     public function setVar($name, $value) {
-        $this->vars[$name]=$value;
+        $this->_params[$name]=$value;
     }
 
     public function getVar($name) {
-        return $this->vars[$name];
+        return $this->_params[$name];
     }
 
     public function getVars(){
-        return $this->vars;
+        return $this->_params->toArray();
     }
 	
 	private function getViewDescFile() {	
-		$baseFile = substr($this->view, 0, strlen( $this->view ) - 4 );		
+		$baseFile = substr($this->_view, 0, strlen( $this->_view ) - 4 );		
 		return $baseFile . ".desc.php";
 	}
 }
