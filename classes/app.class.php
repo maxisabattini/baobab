@@ -14,12 +14,6 @@ require_once "css_queue.class.php";
 
 class App {
 
-    /**
-     * Get Instance
-     *
-     * @param string $name
-     * @return App
-     */
     public static function getInstance($name = 'default') {
         if( ! isset(self::$_instances[$name]) ) {
             self::$_instances[$name] = new self($name);
@@ -27,20 +21,10 @@ class App {
         return self::$_instances[$name];
     }
     
-    public function config($key, $value=false) {
-        if(!$value) {               
-            if(is_object($key)){
-                $key=(array)$key;
-            }            
-            if(is_array($key)){
-                $this->_config->merge($key);
-            } else {    //Getter            
-                return $this->_config[$key];
-            }
-        } else {
-            $this->_config[$key]=$value;
-        }
-    }
+
+    /*
+    *	Route managment
+    */
 
     public function map($pattern, $callable, $params=array(), $methods=array()){
 
@@ -49,7 +33,7 @@ class App {
         }
         //Log::debug("Using pattern: $pattern");
 
-        $realParams = new Param($params);
+        $realParams = new Parameters($params);
         $realParams->merge($this->_mapParams);
 
         $this->_routes[$pattern] = new Route($pattern, $this->_mapUri, $callable, $realParams, $methods);
@@ -71,60 +55,6 @@ class App {
     public function put($pattern, $callable ){
         $this->map($pattern, $callable, array("put"));
     }
-
-    // View/Controller management
-
-    public function render($name, $params=array(), $isModule=true) {
-
-        if( ( $pos = strpos($name, ":") ) !== false ) {
-            $params["type"] = substr($name, $pos+1);
-            $name = substr($name, 0, $pos);
-        }
-
-        $viewFile = $this->_getViewFile($name, $isModule);
-        $hasView = !!$viewFile;
-
-        $controllerFile = $this->_getControllerFile($name, $isModule);
-        $hasController = !!$controllerFile;
-
-        Log::debug(
-            "Loading " . ($isModule ? 'MODULE' : 'PAGE') . " ( " . $name ." ) " .
-                " controller => " . ( $hasController ? "YES" : "NO") .
-                " view => " . ( $hasView ? "YES" : "NO" )
-        );
-
-        $controller = new Controller( $viewFile, $params, $this );
-
-        if( $hasController ) {
-            require_once $controllerFile;
-
-            $class = ucfirst($name);
-
-            $class = str_replace('-','_', $class);
-            $class = str_replace('.','_', $class);
-
-            $className = "\\$class"."Controller";
-
-            Log::debug("Controller Class => $className ");
-
-            if( class_exists($className)) {
-                $controller = new $className( $viewFile, $params );
-            } else {
-                Log::error("Controller Class not exist.");
-            }
-        }
-
-        if( ! $hasView && ! $hasController ) {
-            Log::warn( ($isModule ? 'MODULE' : 'PAGE') ." => $name not executed");
-            return false;
-        } else {
-            //$controller->app = $this;
-            $controller->render();
-        }
-        return true;
-    }
-
-    // Routes management
 
     public function getRouteUrl($route) {
         $url = $this->config("url_base");
@@ -191,6 +121,61 @@ class App {
         }
 	}
 
+
+    public function render($name, $params=array(), $isModule=true) {
+
+        if( ( $pos = strpos($name, ":") ) !== false ) {
+            $params["type"] = substr($name, $pos+1);
+            $name = substr($name, 0, $pos);
+        }
+
+        $viewFile = $this->_getViewFile($name, $isModule);
+        $hasView = !!$viewFile;
+
+        $controllerFile = $this->_getControllerFile($name, $isModule);
+        $hasController = !!$controllerFile;
+
+        Log::debug(
+            "Loading " . ($isModule ? 'MODULE' : 'PAGE') . " ( " . $name ." ) " .
+                " controller => " . ( $hasController ? "YES" : "NO") .
+                " view => " . ( $hasView ? "YES" : "NO" )
+        );
+
+        $controller = new Controller( $viewFile, $params, $this );
+
+        if( $hasController ) {
+            require_once $controllerFile;
+
+            $class = ucfirst($name);
+
+            $class = str_replace('-','_', $class);
+            $class = str_replace('.','_', $class);
+
+            $className = "\\$class"."Controller";
+
+            Log::debug("Controller Class => $className ");
+
+            if( class_exists($className)) {
+                $controller = new $className( $viewFile, $params );
+            } else {
+                Log::error("Controller Class not exist.");
+            }
+        }
+
+        if( ! $hasView && ! $hasController ) {
+            Log::warn( ($isModule ? 'MODULE' : 'PAGE') ." => $name not executed");
+            return false;
+        } else {
+            //$controller->app = $this;
+            $controller->render();
+        }
+        return true;
+    }
+
+    /*
+    *	Config
+    */
+
     public function getPath() {
         return $this->config("path");
     }
@@ -207,12 +192,40 @@ class App {
     	}
     }
 
+    public function config($key, $value=false) {
+        if(!$value) {               
+            if(is_object($key)){
+                $key=(array)$key;
+            }            
+            if(is_array($key)){
+                $this->_config->merge($key);
+            } else {    //Getter            
+                return $this->_config[$key];
+            }
+        } else {
+            $this->_config[$key]=$value;
+        }
+    }
+
+	/*
+    * Dependencies Objects
+    */
+
     public function getUri(){
     	return $this->_uri;
     }
-   
 
-    // Private members
+    public function getRequest(){
+    	return $this->_request;
+    }
+
+    public function getResponse(){
+    	return $this->_response;
+    }
+   
+    /*
+    * Private members
+    */
 
     protected static $_instances = array();
 
@@ -227,7 +240,6 @@ class App {
     protected $_currentPattern = null;
 
     protected $_config = null;
-
 
     private function __construct($name="") {
 
@@ -251,14 +263,17 @@ class App {
             ),
         );
         
-        $this->_config = new Param($defaults);
+        $this->_config = new Parameters($defaults);
         $this->config("name", $name);
 
         $baobabPath = dirname ( dirname(__FILE__) );
         $_path = dirname(dirname(dirname( $baobabPath ) ) );
         $this->config("path", $_path);
 
+        $this->_response = new Response();
+		$this->_request = Request::getInstance();
         $this->_uri = new Uri();
+
         Log::debug("URI: ");
         Log::debug($this->_uri);
         $this->config("url", $this->_uri->toString());
@@ -312,6 +327,8 @@ class App {
             $response=$callable($params);
             if( $response instanceof Response ) {
             	$response->apply();
+            } else {
+            	$this->_response->apply();
             }
         } else {    //Load Controller
             $this->_currentPattern = $route->pattern;
@@ -328,7 +345,8 @@ class App {
                     $this->_routeUsed=true;
                     return;
                 }
-            }	
+            }
+            $this->_response->apply();
             $this->_routeUsed = $this->render($route->callable, $route->params, false);
         }
     }
@@ -389,7 +407,7 @@ class App {
     }
 }
 
-class Param implements \ArrayAccess {
+class Parameters implements \ArrayAccess {
 
 	private $_container = null;
 
@@ -447,16 +465,22 @@ class Param implements \ArrayAccess {
 		}
 	}
 
-	public function toArray(){
+	public function exists(){}
+
+	public function toArray( $recursive = false ){
 		return $this->_container;
 	}
 
-	public function toObject(){
+	public function toObject( $recursive = false ){
 		return (object) $this->_container;
+	}
+
+	public function toString($format = 'JSON'){
+		//TODO:
 	}
 }
 
-class Uri extends Param {
+class Uri extends Parameters {
 
     public function __construct() {
     	parent::__construct();
@@ -648,12 +672,10 @@ class Request {
 	private $_headers=array();
 
 	private function __construct() {
+
 		//Method
-		$this->_method = strlower($_SERVER['REQUEST_METHOD']);
-
-
+		$this->_method = strtolower($_SERVER['REQUEST_METHOD']);
 		$this->_isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
-
 
 		//Headers		
 		foreach ($_SERVER as $key => $value) {
@@ -666,24 +688,38 @@ class Request {
 
 }
 
-public class Response {
+class Response {
 
-	public function setHeader() {
+	public function setHeader($name, $value) {
+		$this->_headers[$name]=$value;
 	}
 
-	public function setExpires() {
+	public function setExpires($timestamp, $zone="GMT") {
+		$this->setHeader("Expires",gmdate("D, d M Y H:i:s $zone", $timestamp) );
 	}
 
-	public function setContent() {
+	public function setContent($type="application/octet-stream") {
+		$this->setHeader("Content-Type", $type );
 	}
 
 	public function redirect($url) {
+		$this->apply();
+		header("location: $url");
 	}
 
 	public function apply($response=null) {
+		/*
+		for( $this->_headers as $key => $value ) {
+			header("$key: $value");
+		}
+		*/
 	}
 
-	private function __construct() {
+	private $_headers=null;
+
+	public function __construct() {
+		$this->_headers=new Parameters();
 	}
+
 }
 
