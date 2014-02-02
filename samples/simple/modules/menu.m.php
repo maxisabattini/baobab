@@ -1,18 +1,17 @@
 <?php
-global $app;
-
-$params = $app->pageParams();
-
+/*
+$params = ;
 $page = $params["page"];
-
+*/
+var_dump($this->app->getRouteParams());
+$page = $this->app->getRouteParams()->page;
 $class = 'class="active"';
-
 ?>
 <ul class="nav nav-pills">
   <li <?= $page=="home" ? $class : ''?> >
-    <a href="<?=$app->pageUrl("home"); ?>"  >Home</a>
+    <a href="<?=$this->app->getRouteUrl("home"); ?>">Home</a>
   </li>
   <li <?= $page=="contact" ? $class : ''?> >
-    <a href="<?=$app->pageUrl("contact"); ?>" >Contact</a>
+    <a href="<?=$this->app->getRouteUrl("contact"); ?>" >Contact</a>
   </li>  
 </ul>

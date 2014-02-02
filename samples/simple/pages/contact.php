@@ -41,7 +41,7 @@ $enq->beginCode();
 ?>
 <script>
     jQuery(document).ready(function(){
-        alert("Page Test loaded");
+        alert("Contact Page loaded");
     });
 </script>
 <?php

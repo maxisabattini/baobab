@@ -1,9 +1,7 @@
 <?php
 
 use \baobab\Controller;
-
 use \baobab\App;
-
 use \baobab\Config;
 
 class App_HeaderController extends Controller {
@@ -16,7 +14,7 @@ class App_HeaderController extends Controller {
 		//Init vars here
         $defaultTitle = $app->config("title");
 
-        $pageParams = $app->pageParams();
+        $pageParams = $app->getRouteParams();
 
 		$title = $pageParams["title"];
 		

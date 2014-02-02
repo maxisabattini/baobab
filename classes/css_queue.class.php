@@ -36,7 +36,7 @@ class CssQueue extends Queue {
 
         $app = App::getInstance();
 
-        $appUrl = $app->getUrlBase();
+        $appUrl = $app->getUrl();
         //$appName = urlencode($appUrl);
         $appName = md5($appUrl);
 

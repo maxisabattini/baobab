@@ -29,7 +29,7 @@ class Controller {
 
         if($name) {
             Log::debug("Render on Controller : $name");
-            $viewParams = new Params($this->getVars());
+            $viewParams = new Parameters($this->getVars());
             $viewParams->merge($params);
             $this->app->render($name, $viewParams->toArray(), $isModule);
             return;
