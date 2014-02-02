@@ -1,9 +1,4 @@
 <?php
-/*
-$params = ;
-$page = $params["page"];
-*/
-var_dump($this->app->getRouteParams());
 $page = $this->app->getRouteParams()->page;
 $class = 'class="active"';
 ?>
