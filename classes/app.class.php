@@ -60,6 +60,14 @@ class App {
     public function put($pattern, $callable ){
         $this->map($pattern, $callable, array("put"));
     }
+    
+    public function patch($pattern, $callable ){
+        $this->map($pattern, $callable, array("patch"));
+    }
+    
+    public function delete($pattern, $callable ){
+        $this->map($pattern, $callable, array("delete"));
+    }
 
     public function getRouteUrl($route) {
         $url = $this->config("url_base");
@@ -358,7 +366,6 @@ class App {
         }
     }
 
-
     protected function _getLayoutFile($name) {
         $paths = $this->config("layouts_path");
 
@@ -413,8 +420,3 @@ class App {
         return false;
     }
 }
-
-
-
-
-

@@ -36,7 +36,4 @@ class Response {
     public function __construct() {
         $this->_headers=new Parameters();
     }
-
 }
-
- 

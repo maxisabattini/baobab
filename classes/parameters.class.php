@@ -62,7 +62,13 @@ class Parameters implements \ArrayAccess {
         }
     }
 
-    public function exists(){}
+    public function get($key) {
+        return $this->offsetGet($offset);
+    }
+    
+    public function has($key){
+        return $this->offsetExists($key);
+    }    
 
     public function toArray( $recursive = false ){
         return $this->_container;

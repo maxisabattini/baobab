@@ -2,7 +2,6 @@
 Objects
 =======
 
-
 ### Application
 
 This is a main class. 
@@ -22,19 +21,25 @@ Route:
 	- map()
 	- get()
 	- post()
+	- delete()
+	- put()
+	- patch()
 	- getRouteUrl()
-	- getRouteParams()
+	- getRouteParams()	
 	- route()
+	
+View & Controller support:
 
-
+	- render()
+	
 ### Param
 
 This class implement a functionality of common parameter object, and is a optional replacement of stdClass or Array.
 
 Methods:
 
-    - has( name )   //TODO
-    - get( key )    //TODO  if is callable return a result
+    - has( name )
+    - get( name )    //TODO  if is callable return a result
     - set( key, value ) //TODO
 	- toArray()
 	- toObject()
@@ -128,18 +133,26 @@ Methods:
     
     - run()
     - runSilent()
-	
-## TODO
 
-Log
+### Log
 
-    - log( value, level )
+Methods:
+
+    - info( value)
+    - notice( value)
+    - warn( value)
+    - error( value )
+    - debug( value )
     
-LogOutput
+### LogOutput
 
-    - lprint( value )
+Interface
 
--Request
+    - lprint( value , level)
+    
+### Request
+
+Methods:
 
     - isGet()
     - isPost()    
@@ -159,7 +172,9 @@ LogOutput
     - getClientAddress()
     - getAcceptableContent()
     
-Response
+### Response
+
+Methods:
 
     - getHeader()
     - getHeaders()
@@ -167,6 +182,10 @@ Response
     - setHeader()
     - redirect()
     - setExpires()
+    
+    
+## TODO
+
     
 Cookies
 
@@ -182,3 +201,13 @@ Message
 
 The same Config system for each lang, in a messages folder for default.
 In the views is $msg->_()
+
+
+### Others things TODO
+
+Define public members of Route class.
+Implement Response::apply() method.
+Move resposabilities from Uri class to Request.
+Implement Parameters class toString.
+Finish a Cli class refactor.
+Better View default parameters system. Use comments maybe.

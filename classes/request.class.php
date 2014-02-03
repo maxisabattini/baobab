@@ -21,6 +21,10 @@ class Request {
     public function isDelete() {
         return $this->_method=="delete";
     }
+    
+    public function isPatch() {
+        return $this->_method=="patch";
+    }    
 
     public function isSecure(){
         if ( isset($_SERVER['HTTPS']) ) {
@@ -102,6 +106,4 @@ class Request {
             }
         }        
     }
-
 }
-
