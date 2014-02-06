@@ -29,7 +29,12 @@ class Session {
     public function set($var, $value) {
         $this->_data[$var]=$value;
     }
-    
+
+    public function close() {
+        session_write_close();
+        session_destroy();
+    }
+
     public function drop($var) {
         unset($this->_data[$var]);
     }

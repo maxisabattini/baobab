@@ -27,6 +27,8 @@ class Controller {
 
     public function render($name="", $params=array(), $isModule=true) {
 
+
+
         if($name) {
             Log::debug("Render on Controller : $name");
             $viewParams = new Parameters($this->getVars());
@@ -35,6 +37,7 @@ class Controller {
             return;
         }
 
+        //ob_start();
 
 		//Load Description file
 		$descFile = $this->getViewDescFile();
@@ -52,14 +55,20 @@ class Controller {
 		$this->_params->merge($params);
 
         //Expose vars
+        Log::info( "To expose params");
+        Log::debug( $this->_params->toArray() );
+
         foreach( $this->_params->toArray() as $fieldName => $fieldValue ) {
             $$fieldName = $fieldValue;
         }
 
         //Render
         if( $this->_view ) {
+            Log::debug("Including View : " .  $this->_view );
             include $this->_view;
         }
+
+        //echo ob_get_clean();
     }
 
     public function setVar($name, $value) {

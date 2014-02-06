@@ -21,7 +21,7 @@ class Database {
         try {
             $this->_conn = new \PDO($this->_dsn, $user, $pass, $driver_opt);
         } catch (\PDOException $e) {
-            throw new \Exception("Database connection error");
+            throw new \Exception("Database connection error with credentials :" . $this->_dsn . " | $user:$pass ");
         }
         return true;
     }

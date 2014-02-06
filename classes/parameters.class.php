@@ -9,7 +9,8 @@ class Parameters implements \ArrayAccess {
     private $_container = null;
 
     public function __construct($default=array()){
-        $this->_container= is_array( $default ) ? $default : array();
+        $this->_container=array();
+        $this->merge($default);
     }
 
     /*
@@ -57,9 +58,15 @@ class Parameters implements \ArrayAccess {
         if( is_object($input) ) {
             $this->_container=array_merge($this->_container, (array) $input);
         }
+
         if(is_array($input)) {
             $this->_container=array_merge($this->_container, $input);
         }
+
+        if( $input instanceof Parameters ) {
+            $this->_container=array_merge($this->_container, $input->toArray());
+        }
+
     }
 
     public function get($key) {

@@ -74,6 +74,10 @@ class App {
         if(!$this->config("rewrite")) {
             $url.="/index.php";
         }
+        if(!isset($this->_reverse_routes[$route])) {
+            Log::warn("Route not found: $route");
+            return false;
+        }
         $url.=$this->_reverse_routes[$route];
         return $url;
     }
@@ -330,16 +334,16 @@ class App {
     protected function _executeRoute($route){
 
         $this->_routeUsed = true;
-        $params = $route->params;
+
         Log::debug("Route params:");
-        Log::debug($params);
+        Log::debug($route->params);
         $callable = $route->callable;
         if(!$callable) {
             Log::warn("Not callable or controller for this map: ". $route->pattern );
         }
 
         if(is_callable($callable)) {
-            $response=$callable($params);
+            $response=$callable($route->params);
             if( $response instanceof Response ) {
             	$response->apply();
             } else {
@@ -354,7 +358,7 @@ class App {
                 Log::debug("Layout request => $layout ");
                 if( $hasLayout ) {
                     Log::debug("Using Layout File => $layoutFile ");
-                    $controller = new Controller( $layoutFile, $params, $this );
+                    $controller = new Controller( $layoutFile, $route->params, $this );
                     $controller->setVar("page", $route->callable);
                     $controller->render();
                     $this->_routeUsed=true;
