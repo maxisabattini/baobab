@@ -36,7 +36,6 @@ class App {
         if( $pattern[0] != "/" ) {
             $pattern = "/$pattern";
         }
-        //Log::debug("Using pattern: $pattern");
 
         $realParams = new Parameters($params);
         $realParams->merge($this->_mapParams);
@@ -138,6 +137,21 @@ class App {
         }
 	}
 
+    public function redirect($url) {
+        if(headers_sent()) {
+            $string = '<script type="text/javascript">';
+            $string .= 'window.location = "' . $url . '"';
+            $string .= '</script>';
+
+            echo $string;
+        } else {
+            if (isset($_SERVER['HTTP_REFERER']) && ($url == $_SERVER['HTTP_REFERER']))
+                header('Location: '.$_SERVER['HTTP_REFERER']);
+            else
+                header('Location: '. $url);
+        }
+        exit;
+    }
 
     public function render($name, $params=array(), $isModule=true) {
 
@@ -360,7 +374,9 @@ class App {
                     Log::debug("Using Layout File => $layoutFile ");
                     $controller = new Controller( $layoutFile, $route->params, $this );
                     $controller->setVar("page", $route->callable);
+                    ob_start();
                     $controller->render();
+                    echo ob_get_clean();
                     $this->_routeUsed=true;
                     return;
                 }
