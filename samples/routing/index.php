@@ -3,9 +3,10 @@
 require_once "../../classes/app.class.php";
 
 $app = \baobab\App::getInstance();
+$router=$app->getRouter();
 
-$app->map("/", "home");
-$app->map("/about", "about");
+$router->map("/", "home");
+$router->map("/about", "about");
 
 $app->route();
 

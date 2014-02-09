@@ -5,56 +5,81 @@ namespace baobab;
 class Route {
 
     public $pattern;
-    public $callable;
-    public $params;
 
-    public $conditions = array();
+    public $action;
 
-    public $methods = array();
+    public $name;
 
+    public $parameters;
+
+    public $methods;
+
+	public $lastUrlMatched = null;
     public $isMatched = false;
 
-    function __construct($pattern, $url, $callable=null, $params=array(), $methods=array()){
+    /**
+    *
+    * Create a new Route instance.
+    *
+    * @param  string   $pattern
+    * @param  string|callable   $action
+    * @param  array   $params
+    * @param  array   $methods
+    */
+    public function __construct($pattern, $action=null, $name=null, $parameters=array(), $methods=array()){
 
         $this->pattern = $pattern;
-        $this->callable = $callable;
-        $this->methods = $methods;
-
-        $this->params = $params;
-
-        $p_names = array(); $p_values = array();
-
-        preg_match_all('@:([\w]+)@', $pattern, $p_names, PREG_PATTERN_ORDER);
-        $p_names = $p_names[0];
-
-        $conditions=$this->conditions;
-        $regex_url = function($matches) use ($conditions) {
-            $key = str_replace(':', '', $matches[0]);
-            if (array_key_exists($key, $conditions)) {
-                return '('.$conditions[$key].')';
-            }
-            else {
-                return '([a-zA-Z0-9_\+\-%]+)';
-            }
-        };
-
-        $url_regex = preg_replace_callback('@:[\w]+@', $regex_url, $pattern);
-        $url_regex .= '/?';
-
-        if (preg_match('@^' . $url_regex . '$@', $url, $p_values)) {
-            array_shift($p_values);
-
-            foreach($p_names as $index => $value) $this->params[substr($value,1)] = urldecode($p_values[$index]);
-
-            //foreach($target as $key => $value) $this->params[$key] = $value;
-
-            $this->isMatched = true;
+        $this->action = $action;
+        $this->name = $name;
+        if(!$name) {
+            $this->name = $pattern;
         }
 
-        unset($p_names); unset($p_values);
+		$this->parameters = $parameters;
+
+        $this->methods = $methods;        
     }
 
-    public function matches($uri){}
-    
+    public function matches($url){
+
+		$this->isMatched = false;
+
+        $variables_regex='@{([\w]+)}@';
+		$variables = array();
+        preg_match_all($variables_regex, $this->pattern, $variables, PREG_PATTERN_ORDER);
+        $variables = $variables[1];
+        
+		$value_regex='([a-zA-Z0-9_\+\-%]+)';
+		$url_regex = preg_replace($variables_regex, $value_regex, $this->pattern);
+		$url_regex .= '/?';
+
+		$values = array();
+		if (preg_match('@^' . $url_regex . '$@', $url, $values)) {
+
+			$this->isMatched = true;
+			$this->lastUrlMatched = $url;
+
+			array_shift($values);
+            foreach($variables as $i => $varName) {
+
+            	$this->parameters[$varName]=urldecode( $values[$i] );
+            	Log::debug("Set Route Param: " . $varName . " =>  " . $values[$i] );
+            }
+		}
+
+		unset($variables); unset($values);
+
+		return $this->isMatched;
+    }
+
+    public function makeUrl($parameters) {
+
+    	$url=$this->pattern;
+    	foreach ($parameters as $key => $value) {
+    		$url=str_replace('{'.$key.'}', $value, $url);
+    	}
+
+    	return $url;
+    }
 }
 

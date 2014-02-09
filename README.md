@@ -18,12 +18,6 @@ Url and Path:
 
 Route:
 
-	- map()
-	- get()
-	- post()
-	- delete()
-	- put()
-	- patch()
 	- getRouteUrl()
 	- getRouteParams()	
 	- route()
@@ -32,6 +26,13 @@ View & Controller support:
 
 	- render()
 	
+Dependencies:
+
+    - getUri()
+    - getRouter()
+    - getRequest()
+    - getResponse()
+
 ### Param
 
 This class implement a functionality of common parameter object, and is a optional replacement of stdClass or Array.
@@ -49,6 +50,21 @@ Methods:
 
 Hold a complete information of a uri resource.
 
+### Router
+
+Methods:
+
+    - map()
+    - get()
+    - post()
+    - delete()
+    - put()
+    - patch()
+    - getRouteByName()
+    - getMatched()
+    - getLatestMatched()
+
+
 ### Route
 
 Handle a route from a url given.
@@ -56,12 +72,15 @@ Handle a route from a url given.
 Properties:
 
     - pattern
+    - action
+    - name
     - params
     - methods ( GET, POST, PUT )
 
 Methods:
     
     - matches( url )
+    - makeUrl( params )
 
 ### Config
 
@@ -184,6 +203,7 @@ Methods:
     - setExpires()
     
     
+
 ## TODO
 
     
@@ -205,6 +225,7 @@ In the views is $msg->_()
 
 ### Others things TODO
 
+Support for optional parameters for routes.
 Define public members of Route class.
 Implement Response::apply() method.
 Move resposabilities from Uri class to Request.

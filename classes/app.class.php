@@ -15,6 +15,7 @@ require_once "parameters.class.php";
 require_once "uri.class.php";
 require_once "request.class.php";
 require_once "response.class.php";
+require_once "router.class.php";
 require_once "route.class.php";
 
 class App {
@@ -30,69 +31,44 @@ class App {
     /*
     *	Route managment
     */
+    public function getRouteUrl( $routeName ) {
 
-    public function map($pattern, $callable, $params=array(), $methods=array()){
-
-        if( $pattern[0] != "/" ) {
-            $pattern = "/$pattern";
+        $parameters=array();
+        $pieces=explode( "?", $routeName);
+        if( $pieces && count($pieces) > 1 ) {
+            $routeName=$pieces[0];
+            parse_str( $pieces[1] , $parameters );
         }
 
-        $realParams = new Parameters($params);
-        $realParams->merge($this->_mapParams);
+        $route = $this->_router->getRouteByName($routeName);
 
-        $this->_routes[$pattern] = new Route($pattern, $this->_mapUri, $callable, $realParams, $methods);
-
-        if(! is_callable($callable) ) {
-            $this->_pages[$pattern]=$callable;
-            $this->_reverse_routes[$callable]=$pattern;
-        }
-    }
-
-    public function get($pattern, $callable ){
-        $this->map($pattern, $callable, array("get"));
-    }
-    
-    public function post($pattern, $callable ){
-        $this->map($pattern, $callable, array("post"));
-    }
-
-    public function put($pattern, $callable ){
-        $this->map($pattern, $callable, array("put"));
-    }
-    
-    public function patch($pattern, $callable ){
-        $this->map($pattern, $callable, array("patch"));
-    }
-    
-    public function delete($pattern, $callable ){
-        $this->map($pattern, $callable, array("delete"));
-    }
-
-    public function getRouteUrl($route) {
         $url = $this->config("url_base");
         if(!$this->config("rewrite")) {
             $url.="/index.php";
         }
-        if(!isset($this->_reverse_routes[$route])) {
-            Log::warn("Route not found: $route");
-            return false;
+
+        if( $route ) {
+            $url .= $route->makeUrl($parameters);
         }
-        $url.=$this->_reverse_routes[$route];
         return $url;
     }
 
-    public function getRouteParams($route=false) {
+    public function getRouteParams($routeName=false) {        
 
-        if(!$route) {
-            $theRoute = $this->_routes[ $this->_currentPattern ];
+        $parameters = new Parameters();
+
+        if($routeName) {
+            $route = $this->_router->getRouteByName($routeName);
+            $parameters->merge( $route->parameters );           
         } else {
-            $pattern = $this->_reverse_routes[$route];
-            $theRoute = $this->_routes[$pattern];
+            //Current Used Route
+            $matches = $this->_router->getLatestMatched();
+            if( $matches ) {         
+                $parameters->merge($matches[0]->parameters);
+            }             
         }
 
-        $result = clone $theRoute->params;
-        $result->merge(array( "page" => $theRoute->callable ));
-        return $result;
+        return $parameters;                    
     }
 
     public function route( $routes=array() ) {
@@ -105,31 +81,26 @@ class App {
             }
 
             if(isset($v["page"])) {
-                $callable = $v["page"];
-                unset($v["page"]);
+                $action = $v["page"];                
 
                 if($k==".") {
                     $k="/";
                 }
 
-                $this->map($k, $callable, $v);
+                $this->_router->map($k, $action, $action, $v);                
             }
         }
 
         Log::debug("Starting route");
 
-        foreach($this->_routes as $route) {
-            if ($route->isMatched) {
-                $this->_executeRoute($route);
-                break;
-            }
-        }
-
-        if( ! $this->_routeUsed ) {
+        $matches = $this->_router->getMatched(true);        
+        if( $matches ) {
+            $this->_executeRoute($matches[0]);
+        } else {
+            //404 here
             $page404='404';
-            if( isset( $this->_reverse_routes[$page404] ) ) {
-                $pattern = $this->_reverse_routes[$page404];
-                $route = $this->_routes[$pattern];
+            $route=$this->_router->getRouteByName($page404);
+            if($route) {
                 $this->_executeRoute($route);
             } else {
                 header('HTTP/1.0 404 Not Found');
@@ -242,6 +213,10 @@ class App {
     * Dependencies Objects
     */
 
+    public function getRouter(){
+        return $this->_router;
+    }
+
     public function getUri(){
     	return $this->_uri;
     }
@@ -260,17 +235,16 @@ class App {
 
     protected static $_instances = array();
 
-    protected $_uri = null;
+    
 
-    protected $_routes = array();
     protected $_routeUsed = false;
-
-    protected $_pages = array();
-    protected $_reverse_routes = array();
-
     protected $_currentPattern = null;
 
     protected $_config = null;
+    protected $_uri = null;
+    protected $_router = null;
+    protected $_request = null;
+    protected $_response = null;
 
     private function __construct($name="") {
 
@@ -343,6 +317,8 @@ class App {
 
         $this->_mapUri = "/" . $query;
         Log::debug("Map Uri: ". $this->_mapUri );
+
+        $this->_router = new Router($this->_mapUri);
     }
 
     protected function _executeRoute($route){
@@ -350,14 +326,14 @@ class App {
         $this->_routeUsed = true;
 
         Log::debug("Route params:");
-        Log::debug($route->params);
-        $callable = $route->callable;
+        Log::debug($route->parameters);
+        $callable = $route->action;
         if(!$callable) {
             Log::warn("Not callable or controller for this map: ". $route->pattern );
         }
 
         if(is_callable($callable)) {
-            $response=$callable($route->params);
+            $response=$callable($route->parameters);
             if( $response instanceof Response ) {
             	$response->apply();
             } else {
@@ -365,15 +341,15 @@ class App {
             }
         } else {    //Load Controller
             $this->_currentPattern = $route->pattern;
-            $layout = isset($route->params["layout"])?$route->params["layout"]: $this->config("layout");
+            $layout = isset($route->parameters["layout"])?$route->parameters["layout"]: $this->config("layout");
             if($layout) {
                 $layoutFile = $this->_getLayoutFile($layout);
                 $hasLayout = !!$layoutFile;
                 Log::debug("Layout request => $layout ");
                 if( $hasLayout ) {
                     Log::debug("Using Layout File => $layoutFile ");
-                    $controller = new Controller( $layoutFile, $route->params, $this );
-                    $controller->setVar("page", $route->callable);
+                    $controller = new Controller( $layoutFile, $route->parameters, $this );
+                    $controller->setVar("page", $route->action);
                     ob_start();
                     $controller->render();
                     echo ob_get_clean();
@@ -382,7 +358,7 @@ class App {
                 }
             }
             $this->_response->apply();
-            $this->_routeUsed = $this->render($route->callable, $route->params, false);
+            $this->_routeUsed = $this->render($route->action, $route->parameters, false);
         }
     }
 
