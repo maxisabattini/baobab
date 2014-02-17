@@ -136,6 +136,7 @@ Methods:
 
     - hasParam()
     - getParam()
+    - getParams()
     
     - title()   //aka h3
     - line()    //aka br

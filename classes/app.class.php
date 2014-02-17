@@ -1,6 +1,4 @@
-<?php
-
-namespace baobab;
+<?php namespace baobab;
 
 if( ! defined( "BAOBAB_PATH" ) ) {
     define( "BAOBAB_PATH", dirname ( dirname(__FILE__) ) );
@@ -20,17 +18,34 @@ require_once "route.class.php";
 
 class App {
 
+    /**
+     * Get an instance of App by name.
+     *
+     * @param string $name App instance name
+     * @return \baobab\App Default App instance.
+     */
     public static function getInstance($name = 'default') {
         if( ! isset(self::$_instances[$name]) ) {
             self::$_instances[$name] = new self($name);
         }
         return self::$_instances[$name];
     }
-    
+
 
     /*
-    *	Route managment
+    |--------------------------------------------------------------------------
+    | Routes Management
+    |--------------------------------------------------------------------------
+    |
     */
+
+
+    /**
+     * Return a url of given route name
+     *
+     * @param $routeName
+     * @return string
+     */
     public function getRouteUrl( $routeName ) {
 
         $parameters=array();
@@ -53,6 +68,13 @@ class App {
         return $url;
     }
 
+    /**
+     * Return parameter of given route name, if not route name provided return the
+     * current used route.
+     *
+     * @param bool $routeName
+     * @return \baobab\Parameters
+     */
     public function getRouteParams($routeName=false) {        
 
         $parameters = new Parameters();
@@ -70,6 +92,7 @@ class App {
 
         return $parameters;                    
     }
+
 
     public function route( $routes=array() ) {
 
@@ -124,6 +147,14 @@ class App {
         exit;
     }
 
+    /**
+     * Render a module or page
+     *
+     * @param $name Module/Page name to render
+     * @param array $params
+     * @param bool $isModule
+     * @return bool If was renderer
+     */
     public function render($name, $params=array(), $isModule=true) {
 
         if( ( $pos = strpos($name, ":") ) !== false ) {
@@ -174,18 +205,40 @@ class App {
         return true;
     }
 
+
     /*
-    *	Config
+    |--------------------------------------------------------------------------
+    | Config
+    |--------------------------------------------------------------------------
+    |
     */
 
+
+    /**
+     * Get the App path.
+     *
+     * @return string
+     */
     public function getPath() {
         return $this->config("path");
     }
 
+    /**
+     * Set the app path.
+     *
+     * @param string $path
+     */
     public function setPath($path) {
         $this->config("path", $path);
     }
 
+    /**
+     * Get the app url, by default is a base url.
+     * if base false is provided, return a full url.
+     *
+     * @param bool $base
+     * @return string
+     */
     public function getUrl( $base=true ) {
     	if($base) {
     		return $this->config("url_base");
@@ -194,6 +247,15 @@ class App {
     	}
     }
 
+    /**
+     * Config access function.
+     * If only a key is provided return a value.
+     * If is provided value, set it.
+     *
+     * @param string $key Key to find
+     * @param bool|mixed $value Value to set
+     * @return mixed
+     */
     public function config($key, $value=false) {
         if(!$value) {               
             if(is_object($key)){
@@ -209,43 +271,109 @@ class App {
         }
     }
 
-	/*
-    * Dependencies Objects
+    /*
+    |--------------------------------------------------------------------------
+    | Dependencies Objects
+    |--------------------------------------------------------------------------
+    |
     */
 
+    /**
+     * Get default app Router.
+     *
+     * @return Router
+     */
     public function getRouter(){
         return $this->_router;
     }
 
+    /**
+     * Get a current request Uri
+     *
+     * @return Uri
+     */
     public function getUri(){
     	return $this->_uri;
     }
 
+    /**
+     * Get a current Request
+     *
+     * @return Request
+     */
     public function getRequest(){
     	return $this->_request;
     }
 
+    /**
+     * Get the app response
+     *
+     * @return Response
+     */
     public function getResponse(){
     	return $this->_response;
     }
-   
+
     /*
-    * Private members
+    |--------------------------------------------------------------------------
+    | Private members
+    |--------------------------------------------------------------------------
+    |
     */
 
+    /**
+     * Array of App
+     *
+     * @var \baobab\App[]
+     */
     protected static $_instances = array();
-
     
 
     protected $_routeUsed = false;
     protected $_currentPattern = null;
 
+    /**
+     * Config holder
+     *
+     * @var \baobab\Parameters
+     */
     protected $_config = null;
+
+    /**
+     * Uri object of current request
+     *
+     * @var \baobab\Uri
+     */
     protected $_uri = null;
+
+    /**
+     * Router for this app instance
+     *
+     * @var \baobab\Router
+     */
     protected $_router = null;
+
+    /**
+     * Request used for this app
+     *
+     * @var \baobab\Request
+     */
     protected $_request = null;
+
+
+    /**
+     * Default response
+     *
+     * @var \baobab\Response
+     */
     protected $_response = null;
 
+
+    /**
+     * Create a new App.
+     *
+     * @param string $name An optional App name.
+     */
     private function __construct($name="") {
 
         $defaults = array(

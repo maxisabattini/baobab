@@ -2,6 +2,14 @@
 
 namespace baobab;
 
+/*
+ * CMD mode;                WEB mode;
+ *
+ * param=
+ * -param=           =>      &param=1
+ *
+ * --param=value    =>      &param=value
+ */
 class Cli {
 
     protected $_out;
@@ -14,13 +22,13 @@ class Cli {
 
     public function __construct(){
         if( BAO_CMD ) {
-            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                    $this->_out = new OutCmd();
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {                    
+                $this->_out = new CliOutputCmd();
             } else {
-                    $this->_out = new CliOutputCmdLinux();
+                $this->_out = new CliOutputCmdLinux();
             }
         } else {
-            $this->_out = new OutWeb();
+            $this->_out = new CliOutputWeb();
         }
         if($this->getParam("silent")) {
 			$this->_silent=true;
@@ -33,19 +41,19 @@ class Cli {
     		$value = isset($args[0]) ? $args[0] : "" ;
     		$arguments = isset($args[1]) ? $args[1] : "" ;
     		$this->_out->write($tag, $value, $arguments);
-    	}    	
+    	}
+        if( substr($method, 0, strlen("out")) == "out" ) {
+    		$tag = substr($method, strlen("out") );
+    		$value = isset($args[0]) ? $args[0] : "" ;
+    		$arguments = isset($args[1]) ? $args[1] : "" ;
+    		$this->_out->write($tag, $value, $arguments);
+    	}
     }
-    
-    /*
-     * CMD mode;                WEB mode;
-     *
-     * param=
-     * -param=           =>      &param=1
-     *
-     * --param=value    =>      &param=value
-     */
+
 
     /**
+     * Get all parameters
+     *
      * @return array
      */
     protected function getParams(){
@@ -54,6 +62,8 @@ class Cli {
     }
 
     /**
+     * Get a parameter with name
+     *
      * @param $name
      * @return mixed
      */
@@ -89,64 +99,27 @@ class Cli {
             return null;
         } else {
             //Todo: review this
-            return $_REQUEST[$name];
+            return isset($_REQUEST[$name])?$_REQUEST[$name]:null;
         }
     }
 
-    protected function hasParam($param) {
-        return $this->getParam($param) !== null;
-    }
+    /**
+     * Check if is a paramter passed
+     *
+     * @param $name
+     * @return bool
+     */
+    protected function hasParam($name) {
+        return $this->getParam($name) !== null;
+    }   
 
-    
-    /*
-    
-    public function out( $string, $args=array() ){
-        if(!$this->_silent) {
-            $this->_out->out($string, $args);
-        }
-    }
-
-    public function outHead($string, $args=array()){
-        if(!$this->_silent) {
-            $this->_out->outHead($string, $args);
-        }
-    }
-
-    public function outLine($string, $args=array(), $mode="none"){
-        if(!$this->_silent) {
-            $this->_out->outLine($string, $args, $mode);
-        }
-    }
-
-    public function outParagraph($string, $args=array()){
-        if(!$this->_silent) {
-            $this->_out->outParagraph($string, $args);
-        }
-    }
-    
-    public function outBool($condition, $string, $args=array()){
-        if(!$this->_silent) {
-            $this->_out->outBool($condition, $string, $args);
-        }
-    }    
-
-    public function outObject($obj, $hideEmpty=false) {
-        if(!$this->_silent) {
-            $this->_out->outObject($obj,$hideEmpty);
-        }
-    }
-
-    public function outObjectList($obj, $hideEmpty=false) {
-        if(!$this->_silent) {
-            $this->_out->outObjectList($obj, $hideEmpty);
-        }
-    }
-
-*/
-    
+	/**
+	 * Execute the app
+     *
+	 */    
     public function execute(){
         if(!$this->_silent) {
-            $this->_out->outHeader($this->name);
+            $this->writeHeader($this->name);
         }            
 
         //Call pre scripts
@@ -154,98 +127,41 @@ class Cli {
         //Call post scripts
 
         if(!$this->_silent) {
-            $this->_out->outFooter();
+            $this->writeFooter();
         }            
     }    
 
+	/**
+	 * Real Execute function, subclasses must override it
+	 *
+	 */    
     protected function executeReal(){
-            $this->out("Override me!");
+        $this->out("Override me!");
     }
     
 }
 
 
 interface CliOutput {	
-	public function write( $tag, $value, $args=array()){}
+	public function write( $tag, $value, $args=array());
 }
 
-class CliOutputCmdLinux implements CliOutput {	
-	
-	public function write($tag, $value, $args=array()){
-		switch($tag) {
-									
-			case "Header":
-				print "\033[0m";
-				print "\033[1m";
-				$this->out("\n" . $string . "\n" );
-				print "\033[0m";				
-				print "\n";
-			break;
+class CliOutputDefault implements CliOutput {	
 
-			case "Footer":
-				$this->out("\n");
-				print "\033[0m\n";
-			break;
-
-			case "Head":
-		        print "\033[0m";
-				print "\033[32m";
-		        print "\033[1m";
-				$this->out($string, $args);
-				print "\033[0m\n";
-			break;
-
-			case "Paragraph":
-		        print "\033[0m";
-		        print "\n\033[32m";
-		        $this->out($string, $args);
-		        print "\033[0m\n";				
-			break;				
-			
-			default:
-				$this->out($value, $arg);
-		}
+	public function write( $tag, $value, $args=array()){		
 	}
-	
-	private function out($string, $args=array() ){
+
+	public function outNl(){
+		$this->out("\n");
+	}
+
+	public function out($string, $args=array() ){
 		if( $args ) {
 			print vsprintf($string, $args );
 		} else {
 			print $string;
 		}
-	}	
-
-    public function outLine($string, $args=array(), $mode="none"){
-        print "\033[0m";
-        switch( strtolower(trim($mode))) {
-            case "error":
-                print "\033[31m";
-                break;
-            case "warn":
-                print "\033[35m";
-                break;
-            case "info":
-                print "\033[36m";
-                break;
-            default:
-                break;
-        }
-        $this->out($string, $args);
-        print "\033[0m";
-        print "\n";
-    }
-
-    public function outBool($condition, $string, $args=array(), $mode="none"){
-        print "\033[0m";
-        if($condition) {
-			print "\033[36m[ OK  ] ";
-		} else {
-			print "\033[31m[ERROR] ";
-		}
-		print "\033[0m";
-        $this->out($string, $args);        
-        print "\n";
-    }
+	}    
     
     public function outObject($obj ,$hideEmpty=false){
 		$vars=false;
@@ -272,128 +188,359 @@ class CliOutputCmdLinux implements CliOutput {
             if(is_object($v) || is_array($v)) {
                 $s=print_r($v, true);
             }
-            echo str_pad($i, $maxStr, " ", STR_PAD_LEFT) . ": " . $s . "\n";
+            
+            $this->out( str_pad($i, $maxStr, " ", STR_PAD_LEFT) . ": " . $s );
+            $this->outNl();
         }
     }
 
     public function outObjectList($objects, $hideEmpty=false ){
         $i=1;
         foreach($objects as $o) {
-            echo str_pad( " $i.row ", 80, "*", STR_PAD_BOTH) . "\n";
+            $this->out(str_pad( " $i.row ", 80, "*", STR_PAD_BOTH) );            
+			$this->outNl();
             $this->outObject($o, $hideEmpty);
             $i++;
         }
-    }
+    }    
 }
 
-class OutCmd {
+class CliOutputCmd extends CliOutputDefault {
+   
+    public function write( $tag, $string, $args=array()){
 
-    public function outHeader($string){
-        $this->out("\n" . $string . "\n" );        
-        $this->out( str_pad("", strlen($string), "=" ) );
-        print "\n";
-    }
-
-    public function outFooter(){
-        $this->out("\n");
+        $values = isset($args["values"])?$args["values"]:array();
+        $mode = isset($args["mode"])?$args["mode"]:array();
         
-    }
+        switch($tag) {
 
-	public function out($string, $args=array() ){
-		if( $args ) {
-			print vsprintf($string, $args );
-		} else {
-			print $string;
+			case "Footer":
+				$this->outNl();
+                $this->out( str_pad("", strlen($string), "-" ) );								
+                $this->outNl();
+			break;
+
+            case "Header":
+			case "Head":
+            case "Title":
+                $this->outNl();
+				$this->out($string, $values);
+                $this->outNl();
+                $this->out( str_pad("", strlen($string), "=" ) );				
+                $this->outNl();
+			break;
+
+			case "Paragraph":
+            case "Comment":   
+            	$this->outNl();             
+            	$this->out("```");
+            	$this->outNl();                
+		        $this->out($string, $values);
+            	$this->outNl();             
+            	$this->out("```");
+            	$this->outNl();
+			break;				
+
+            case "Line":                
+                switch( strtolower(trim($mode))) {
+                    case "error":                        
+                        $this->out("!!! ");
+                        break;
+                    case "warn":
+                        $this->out("!! ");
+                        break;
+                    case "info":
+                        $this->out("! ");
+                        break;
+                    default:
+                        break;
+                }                
+                $this->out($string, $values);                
+                $this->outNl();
+			break;				
+       
+            case "Ok":
+                $this->out("[ OK  ] ");
+		        $this->out($string, $values);
+                $this->outNl();
+			break;
+        
+            case "Error":
+                $this->out("[ERROR] ");
+		        $this->out($string, $values);
+                $this->outNl();
+			break;
+        
+            case "Object":
+                $this->outObject($string ,isset($args["hideEmpty"])?$args["hideEmpty"]:false );                
+            break;
+        
+            case "ObjectList":
+                $this->outObjectList($string ,isset($args["hideEmpty"])?$args["hideEmpty"]:false );                
+            break;
+        
+			default:
+				$this->out($string, $values);
+		}        
+    }   
+}
+
+
+class CliOutputCmdLinux extends CliOutputDefault {	
+	
+	public function write($tag, $string, $args=array()){
+        
+        $values = isset($args["values"])?$args["values"]:array();
+        $mode = isset($args["mode"])?$args["mode"]:array();
+        
+        switch($tag) {
+									
+			case "Header":
+				$this->out("\033[0m");
+				$this->out("\033[1m");
+				$this->outNl();
+				$this->out($string);
+				$this->outNl();
+				$this->out("\033[0m");
+				$this->outNl();
+			break;
+
+			case "Footer":
+				$this->outNl();
+				$this->out("\033[0m");
+				$this->outNl();
+			break;
+
+			case "Head":
+            case "Title":
+		        $this->out("\033[0m");
+		        $this->out("\033[32m");
+		        $this->out("\033[1m");
+				$this->out($string, $values);
+				$this->out("\033[0m");
+				$this->outNl();
+			break;
+
+			case "Paragraph":
+            case "Comment":                
+		        $this->out("\033[0m");
+		        $this->outNl();
+		        $this->out("\033[32m");
+		        $this->out($string, $values);
+				$this->out("\033[0m");
+				$this->outNl();
+			break;				
+
+            case "Line":		        
+		        $this->out("\033[0m");               
+                switch( strtolower(trim($mode))) {
+                    case "error":
+                        $this->out("\033[31m");
+                        break;
+                    case "warn":                        
+                        $this->out("\033[35m");
+                        break;
+                    case "info":
+                        $this->out("\033[36m");
+                        break;
+                    default:
+                        break;
+                }            
+
+                $this->out($string, $values);
+				$this->out("\033[0m");
+				$this->outNl();
+			break;				
+       
+
+            case "Ok":
+            	$this->out("\033[0m");		        
+                $this->out("\033[36m[ OK  ] ");
+                $this->out("\033[0m");
+		        $this->out($string, $values);
+				$this->out("\033[0m");
+				$this->outNl();
+			break;				
+        
+            case "Error":
+            	$this->out("\033[0m");		        
+                $this->out("\033[31m[ERROR] ");
+                $this->out("\033[0m");
+		        $this->out($string, $values);
+				$this->out("\033[0m");
+				$this->outNl();
+			break;
+        
+            case "Object":
+                $this->outObject($string ,isset($args["hideEmpty"])?$args["hideEmpty"]:false );                
+            break;
+        
+            case "ObjectList":
+                $this->outObjectList($string ,isset($args["hideEmpty"])?$args["hideEmpty"]:false );                
+            break;
+        
+			default:
+				$this->out($string, $values);
 		}
+	}	
+}
+
+class CliOutputWeb extends CliOutputDefault {	
+	
+	public function write($tag, $string, $args=array()){
+        
+        $values = isset($args["values"])?$args["values"]:array();
+        $mode = isset($args["mode"])?$args["mode"]:array();
+        
+        switch($tag) {
+									
+			case "Header":
+				?>
+		        <html>
+		        <head>
+		            <title><?=$string?></title>
+					<!-- Latest compiled and minified CSS -->
+					<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+
+					<!-- Optional theme -->
+					<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
+		        </head>
+		        <body>
+		        <div class="container">
+		        <h1><?=$string?></h1>
+		        <hr>
+		        <?php
+			break;
+
+			case "Footer":
+		   		?>
+		        </div>
+				<!-- Latest compiled and minified JavaScript -->
+				<script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+		        </body>
+		        </html>
+		        <?php
+			break;
+
+			case "Head":
+            case "Title":
+        		print "<h2>";
+    			$this->out($string, $values);
+        		print "</h2>";
+			break;
+
+			case "Paragraph":
+            case "Comment":                
+		        print '<div class="alert alert-info">';
+		        $this->out($string, $args);
+		        print '</div>';
+			break;				
+
+            case "Line":		        
+				switch( strtolower(trim($mode))) {
+				    case "error":
+				        print "<p class='error'><i class='icon-circle-arrow-right'></i>&nbsp;";
+				        break;
+				    case "warn":
+				        print "<p class='warning'><i class='icon-circle-arrow-right'></i>&nbsp;";
+				        break;
+				    case "info":
+				        print "<p class='info'><i class='icon-circle-arrow-right'></i>&nbsp;";
+				        break;
+				    default:
+				        print "<p ><i class='icon-circle-arrow-right'></i>&nbsp;";
+				        break;
+				}
+				$this->out($string, $values);
+				print "</p>";
+			break;       
+
+            case "Ok":
+		        print "<p class='info'><i class='icon-circle-arrow-right'></i>&nbsp;";
+		        $this->out($string, $values);
+				print "</p>";
+			break;				
+        
+            case "Error":
+		        print "<p class='error'><i class='icon-circle-arrow-right'></i>&nbsp;";            
+				$this->out($string, $values);
+				print "</p>";				
+			break;
+        
+            case "Object":        
+                $this->outObject($string ,isset($args["hideEmpty"])?$args["hideEmpty"]:false );                        
+            break;
+        
+            case "ObjectList":        		
+                $this->outObjectList($string ,isset($args["hideEmpty"])?$args["hideEmpty"]:false );                                
+            break;
+        
+			default:
+				$this->out($string, $values);
+		}
+	}	
+
+	public function outNl(){
+		$this->out("<br/>");
 	}
 
-    public function outLine($string, $args=array(), $mode="none"){
-
-        switch( strtolower(trim($mode))) {
-            case "error":                
-				print "&!";
-				$this->out($string, $args);
-				print "&!";
-                break;
-            case "warn":
-                print "!";
-				$this->out($string, $args);
-				print "!";
-                break;
-            case "info":
-                print "'";
-				$this->out($string, $args);
-				print "'";
-                break;
-            default:
-				$this->out($string, $args);
-                break;
+    public function outObject($obj ,$hideEmpty=false){
+		$vars=false;
+		if( is_object($obj) ) {
+			$vars = get_object_vars($obj);			
+		}		
+		if( is_array($obj) ) {
+			$vars = $obj;			
+		}		
+		if(!$vars){
+			return;
+		}
+        
+        $maxStr=0;
+        foreach($vars as $i => $v){
+            $maxStr = strlen($i) > $maxStr ? strlen($i) : $maxStr;
         }
-        print "\n";
-    }
-}
-
-class OutWeb {
-
-    public function outHeader($string){
         ?>
-        <html>
-        <head>
-            <title><?=$string?></title>
-            <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet">
-        </head>
-        <body>
-        <div class="container">
-        <h1><?=$string?></h1>
-        <hr>
-        <?php
-    }
+    	<form class="form-horizontal" role="form">
+    	<?php
+        foreach($vars as $i => $v){
+            $s=$v;
+            if($hideEmpty&&!$s) {
+                continue;
+            }
 
-    public function outFooter(){
+            if(is_object($v) || is_array($v)) {
+                $s=print_r($v, true);
+            }
+            ?>
+			<div class="form-group">
+				<label class="col-sm-2 control-label">
+				<?=str_pad($i, $maxStr, " ", STR_PAD_LEFT)?>
+				</label>
+				<div class="col-sm-10">
+				<p class="form-control-static">
+				<?=$s?>
+				</p>
+				</div>
+			</div>
+  			<?php            
+        }
         ?>
-        </div>
-        <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js"></script>
-        </body>
-        </html>
-        <?php
+       	</form>
+       	<?php
     }
 
-    public function out($string, $args=array() ){
-        if( $args ) {
-            print vsprintf($string, $args );
+    public function outObjectList($objects, $hideEmpty=false ){
+        $i=1;
+        if(count($objects)) {
+            foreach($objects as $o) {
+                $this->out('<div class="alert alert-info"><strong>'.$i.'</strong></div>');
+                $this->outObject($o, $hideEmpty);
+                $i++;
+            }
         } else {
-            print $string;
+            $this->out('<div class="alert alert-info"><strong>Empty list</strong></div>');
         }
-    }
-
-    public function outHead($string, $args=array()){
-        print "<h2>";
-        $this->out($string, $args);
-        print "</h2>";
-    }
-
-    public function outLine($string, $args=array(), $mode="none"){
-        switch( strtolower(trim($mode))) {
-            case "error":
-                print "<p class='error'><i class='icon-circle-arrow-right'></i>&nbsp;";
-                break;
-            case "warn":
-                print "<p class='warning'><i class='icon-circle-arrow-right'></i>&nbsp;";
-                break;
-            case "info":
-                print "<p class='info'><i class='icon-circle-arrow-right'></i>&nbsp;";
-                break;
-            default:
-                print "<p ><i class='icon-circle-arrow-right'></i>&nbsp;";
-                break;
-        }
-        $this->out($string, $args);
-        print "</p>";
-    }
-
-    public function outParagraph($string, $args=array()){
-        print '<div class="alert alert-info">';
-        $this->out($string, $args);
-        print '</div>';
-    }
+        
+    }        
 }

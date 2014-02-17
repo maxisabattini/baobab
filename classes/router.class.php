@@ -15,23 +15,23 @@ class Router {
     }
 
     public function get($pattern, $callable ){
-        $this->map($pattern, $callable, array("get"));
+        $this->map($pattern, $callable, null, array("get"));
     }
 
     public function post($pattern, $callable ){
-        $this->map($pattern, $callable, array("post"));
+        $this->map($pattern, $callable, null, array("post"));
     }
 
     public function put($pattern, $callable ){
-        $this->map($pattern, $callable, array("put"));
+        $this->map($pattern, $callable, null, array("put"));
     }
 
     public function patch($pattern, $callable ){
-        $this->map($pattern, $callable, array("patch"));
+        $this->map($pattern, $callable, null, array("patch"));
     }
 
     public function delete($pattern, $callable ){
-        $this->map($pattern, $callable, array("delete"));
+        $this->map($pattern, $callable, null, array("delete"));
     }
 
     public function map($pattern, $action, $name=null, $params=array(), $methods=array("get")){
@@ -42,6 +42,9 @@ class Router {
 
 		$route = new Route($pattern, $action, $name, $params, $methods);
 
+		Log::info("Route");
+        Log::debug($route);
+		
         $this->_routes_by_pattern[$pattern] = $route;
 		$this->_routes_by_name[$route->name]= $route;
     }
