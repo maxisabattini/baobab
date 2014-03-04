@@ -4,91 +4,84 @@ namespace baobab;
 
 class Queue {
 
-    private $_vars = array();
+    private $registered = array();
 
-    public function add( $name, $require = array() ) {
-        $this->_vars[$name]=$require;
-    }
+    private $to_do = array();
+
+    private $queue = array();
+
+    private $done = array();
+
+    public function add( $handle, $deps = array() ) {
+        if ( isset($this->registered[$handle]) )
+            return false;
+
+        $dep = new stdClass();
+        $dep->handle=$handle;
+        $dep->deps = $deps;
+        $this->registered[$handle] = $dep;
+        $this->queue[]=$handle;
+        return true;
+    }    
 
     public function getAll() {
+        return $this->do_items();
+    }
 
-        $list = new DependencyList();
-        foreach($this->_vars as $element => $require) {
 
-            $item = new DependencyItem($element);
-            $list->insertAfter( $item );    //insert on top
+    private function do_items( $handles = false ) {
 
-            if($require) {  //has dependencies
-                foreach($require as $r) {
-                    $founded = $list->find($r);
-                    if($founded) {  //dependency already be pushed in list
-                        $list->insertAfter( $item, $founded );  //Move item after dependency
-                    } else {
-                        $list->insertAfter( new DependencyItem($r) );   //insert dependency on top
-                    }
-                }
+        $handles = $this->queue;
+
+        $this->all_deps( $handles );
+
+        foreach( $this->to_do as $key => $handle ) {
+            if ( !in_array($handle, $this->done, true) && isset($this->registered[$handle]) ) {
+
+                if ( isset($this->registered[$handle]) )
+                    $this->done[] = $handle;
+
+                unset( $this->to_do[$key] );
             }
         }
-
-        return $list->getAsArray();
+        
+        return $this->done;
     }
 
-}
+    private function all_deps( $handles, $recursion = false) {
+        if ( !$handles = (array) $handles )
+            return false;
 
-class DependencyList {
+        foreach ( $handles as $handle ) {
+            $queued = in_array($handle, $this->to_do, true);
 
-    private $_head;
+            if ( in_array($handle, $this->done, true) ) // Already done
+                continue;           
 
-    public function __construct() {
-        $this->_head = new DependencyItem(null);
-    }
+            if ( $queued  ) // already queued and in the right group
+                continue;
 
-    public function insertAfter($item, $after=null) {
+            $keep_going = true;
+            if ( !isset($this->registered[$handle]) )
+                $keep_going = false; // Item doesn't exist.
+            elseif ( $this->registered[$handle]->deps && array_diff($this->registered[$handle]->deps, array_keys($this->registered)) )
+                $keep_going = false; // Item requires dependencies that don't exist.
+            elseif ( $this->registered[$handle]->deps && !$this->all_deps( $this->registered[$handle]->deps, true ) )
+                $keep_going = false; // Item requires dependencies that don't exist.
 
-        if( ! $after ) {
-            $after = $this->_head;
-        }
-
-        $next = $after->next;
-        $after->next = $item;
-        $item->next = $next;
-    }
-
-    public function find($data) {
-        $iterator = $this->_head;
-        while( $iterator->next ) {
-            if( $iterator->data == $data ) {
-                return $iterator;
+            if ( ! $keep_going ) { // Either item or its dependencies don't exist.
+                if ( $recursion )
+                    return false; // Abort this branch.
+                else
+                    continue; // We're at the top level. Move on to the next one.
             }
-            $iterator=$iterator->next;
+
+            if ( $queued ) // Already grabbed it and its dependencies.
+                continue;
+
+            
+            $this->to_do[] = $handle;
         }
-        return false;
+        return true;
     }
-
-    public function getAsArray() {
-        $array=array();
-        $iterator = &$this->_head;
-        do {
-            $iterator=&$iterator->next;
-            if($iterator){
-                $array[]=$iterator->data;
-            } else {
-                break;
-            }
-        } while( true );
-
-        return array_reverse($array);
-    }
-}
-
-class DependencyItem {
-
-    public $data;
-    public $next;
-
-    public function __construct($data, $next = null) {
-        $this->data = $data;
-        $this->next = $next;
-    }
-
 }
