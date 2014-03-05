@@ -41,9 +41,6 @@ class Router {
         }
 
 		$route = new Route($pattern, $action, $name, $params, $methods);
-
-		Log::info("Route");
-        Log::debug($route);
 		
         $this->_routes_by_pattern[$pattern] = $route;
 		$this->_routes_by_name[$route->name]= $route;

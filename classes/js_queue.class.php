@@ -29,7 +29,7 @@ class JSQueue extends Queue {
         parent::add($name, $depend);
     }
 
-    public function addScript($script, $name="", $depend = array() ) {
+    public function addScript($script, $name=false, $depend = array() ) {
         if(!$name) {
             $name = md5($script);
         }
@@ -52,7 +52,7 @@ class JSQueue extends Queue {
         $this->_beginCode=true;
     }
 
-    public function endCode($name="", $depend = array()) {
+    public function endCode($name=false, $depend = array()) {
         if($this->_beginCode) {
             $content = ob_get_clean();
             $content = preg_replace("/\<script[^>]*\>/", "", $content);
@@ -63,7 +63,10 @@ class JSQueue extends Queue {
     }
 
     public function flush() {
-        foreach( $this->getAll() as $r ) {
+    
+		$all = $this->getAll();
+    
+        foreach( $all as $r ) {
             if( $this->_scripts[$r]["type"] == "script" ) {
                 echo "<script>" . $this->_scripts[$r]["code"] . "</script>\n";
             } else {
@@ -75,7 +78,7 @@ class JSQueue extends Queue {
     public function flushPacked() {
 
         $all = $this->getAll();
-
+        
         $allReal = array();
         foreach( $all as $r ) {
             $allReal[]=$this->_scripts[$r]["code"];
@@ -107,16 +110,29 @@ class JSQueue extends Queue {
                     $content = $this->_scripts[$r]["code"];
                     $content = preg_replace("/\<script[^>]*\>/", "", $content);
                     $content = preg_replace("/\<\/script\>/", "", $content);
+                    $code .= "\n/* JS_SCRIPT : $r */\n";
                     $code .= $content;
                     //$code .= $this->_scripts[$r]["code"];
                 } else {
-                    $code .= file_get_contents($this->_scripts[$r]["code"]);
+					if( file_exists($this->_scripts[$r]["code"]) ) {
+						Log::info( "loading JS path: " . $this->_scripts[$r]["code"]  );
+						$code .= "\n/* JS_FILE : $r */\n";
+						$code .= file_get_contents( $this->_scripts[$r]["code"] );
+					} else {					
+						Log::warn( "Can not load JS path: " . $this->_scripts[$r]["code"]  );
+						/*	
+						$filePath = $app->getPath() . "/". file_exists($this->_scripts[$r]["code"]);						
+						if(!file_exists($this->_scripts[$r]["code"])) {
+							$code .= file_get_contents($this->_scripts[$r]["code"]);
+						}						
+						*/
+					}                    
                 }
             }
 
             //Minifier
             $jShrinkPath = BAOBAB_PATH . "/libs/JShrink/src/JShrink/Minifier.php";
-            if(file_exists($jShrinkPath)){
+            if( ! $app->config("packed_no_minify") && file_exists($jShrinkPath) ){
                 require_once $jShrinkPath;
                 $code = \JShrink\Minifier::minify($code, array('flaggedComments' => false));
             } else {

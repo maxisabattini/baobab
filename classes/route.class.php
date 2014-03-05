@@ -61,9 +61,7 @@ class Route {
 
 			array_shift($values);
             foreach($variables as $i => $varName) {
-
             	$this->parameters[$varName]=urldecode( $values[$i] );
-            	Log::debug("Set Route Param: " . $varName . " =>  " . $values[$i] );
             }
 		}
 
