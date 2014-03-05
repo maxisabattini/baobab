@@ -16,7 +16,7 @@ class Queue {
         if ( isset($this->registered[$handle]) )
             return false;
 
-        $dep = new stdClass();
+        $dep = new \stdClass();
         $dep->handle=$handle;
         $dep->deps = $deps;
         $this->registered[$handle] = $dep;

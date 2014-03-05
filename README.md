@@ -226,10 +226,10 @@ In the views is $msg->_()
 
 ### Others things TODO
 
-Support for optional parameters for routes.
-Define public members of Route class.
-Implement Response::apply() method.
-Move resposabilities from Uri class to Request.
-Implement Parameters class toString.
-Finish a Cli class refactor.
-Better View default parameters system. Use comments maybe.
+	- Support for optional parameters for routes.
+	- Define public members of Route class.
+	- Implement Response::apply() method.
+	- Move resposabilities from Uri class to Request.
+	- Implement Parameters class toString.
+	- Finish a Cli class refactor.
+	- Better View default parameters system. Use comments maybe.
