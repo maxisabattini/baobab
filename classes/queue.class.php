@@ -14,6 +14,13 @@ class Queue {
 
     private $done = array();
 
+    public function clear() {
+        $this->registered=array();
+        $this->to_do=array();
+        $this->queue=array();
+        $this->done=array();
+    }
+
     public function add( $handle, $deps = array() ) {
         if ( isset($this->registered[$handle]) )
             return false;

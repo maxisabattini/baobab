@@ -128,7 +128,6 @@ class JSQueue extends Queue {
         $path = $app->config("packed_resources_path");
         $path = $path . "/$appName.$hash.js";
 
-
         if( ! file_exists($path) ) {
 
             $code = "";
@@ -166,7 +165,8 @@ class JSQueue extends Queue {
             };
         }
 
-        $md5 = md5_file( $path );
-        return "<script src='".$url."?".$md5."'></script>\n";
+        //$md5 = md5_file( $path );
+        //return "<script src='".$url."?".$md5."'></script>\n";
+        return "<script src='".$url."'></script>\n";
     }
 }

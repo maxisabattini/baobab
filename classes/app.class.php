@@ -478,9 +478,35 @@ class App {
                     Log::debug("Using Layout File => $layoutFile ");
                     $controller = new Controller( $layoutFile, $route->parameters, $this );
                     $controller->setVar("page", $route->action);
+
                     ob_start();
                     $controller->render();
-                    echo ob_get_clean();
+
+                    $sanitize_output = function($buffer) {
+
+                        $search = array(
+                            '/\>[^\S ]+/s',  // strip whitespaces after tags, except space
+                            '/[^\S ]+\</s',  // strip whitespaces before tags, except space
+                            '/(\s)+/s'       // shorten multiple whitespace sequences
+                        );
+
+                        $replace = array(
+                            '>',
+                            '<',
+                            '\\1'
+                        );
+
+                        $buffer = preg_replace($search, $replace, $buffer);
+
+                        return $buffer;
+                    };
+
+                    if( $this->config("packed_resources") ) {
+                        echo $sanitize_output( ob_get_clean() );
+                    } else {
+                        echo ob_get_clean();
+                    }
+                    
                     $this->_routeUsed=true;
                     return;
                 }

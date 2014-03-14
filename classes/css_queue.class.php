@@ -64,6 +64,8 @@ class CssQueue extends Queue {
             //Minifier
             /* remove comments */
             $code = preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $code);
+            // Remove space after colons
+            $code = str_replace(': ', ':', $code);
             /* remove tabs, spaces, newlines, etc. */
             $code = str_replace(array("\r\n", "\r", "\n", "\t", '  ', '    ', '    '), '', $code);
 
@@ -75,7 +77,8 @@ class CssQueue extends Queue {
             }
         }
 
-        $md5 = md5_file( $path );
-        echo '<link href="'. $url."?".$md5.'" media="all" rel="stylesheet" type="text/css">';
+        //$md5 = md5_file( $path );
+        //echo '<link href="'. $url."?".$md5.'" media="all" rel="stylesheet" type="text/css">';
+        echo '<link href="'. $url.'" media="all" rel="stylesheet" type="text/css">';
     }
 }
