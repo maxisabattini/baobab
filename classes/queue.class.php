@@ -2,6 +2,8 @@
 
 namespace baobab;
 
+require_once "cache.class.php";
+
 class Queue {
 
     private $registered = array();
@@ -22,12 +24,27 @@ class Queue {
         $this->registered[$handle] = $dep;
         $this->queue[]=$handle;
         return true;
-    }    
-
-    public function getAll() {
-        return $this->do_items();
     }
 
+    public function getAll() {
+
+        $duration= 60 * 10 ;
+        $key = "Queue-" . md5(print_r($this->registered, true));
+
+        $cache = Cache::getInstance();
+        $all = $cache->get($key, null , $duration );
+        if(!$all) {
+            $all=$this->do_items();
+            if( ! is_null($all) ) {
+                $cache->set($key, $all, $duration );
+            }
+        }
+
+        Log::info("Queue for : $key" );
+        Log::debug($all);
+
+        return $all;
+    }
 
     private function do_items( $handles = false ) {
 

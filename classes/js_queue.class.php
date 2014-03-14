@@ -63,9 +63,9 @@ class JSQueue extends Queue {
     }
 
     public function flush() {
-    
-		$all = $this->getAll();
-    
+
+        $all = $this->getAll();
+
         foreach( $all as $r ) {
             if( $this->_scripts[$r]["type"] == "script" ) {
                 echo "<script>" . $this->_scripts[$r]["code"] . "</script>\n";
@@ -77,8 +77,35 @@ class JSQueue extends Queue {
 
     public function flushPacked() {
 
+        $app = App::getInstance();
+
+        $duration= 60 * 10 ;
+        $key = "JSQueue-" . $app->getUrl(true);
+
+        $cache = Cache::getInstance();
+        $packed = $cache->get($key, null , $duration );
+        if(!$packed) {
+            $packed = $this->_flushPacked();
+            if( ! is_null($packed) ) {
+                $cache->set($key, $packed, $duration );
+            }
+        }
+
+        Log::info("JSQueue for : $key" );
+        Log::debug($packed);
+
+        if(! $packed ) {
+            $this->flush();
+            return;
+        }
+
+        echo $packed;
+    }
+
+    private function _flushPacked() {
+
         $all = $this->getAll();
-        
+
         $allReal = array();
         foreach( $all as $r ) {
             $allReal[]=$this->_scripts[$r]["code"];
@@ -114,19 +141,13 @@ class JSQueue extends Queue {
                     $code .= $content;
                     //$code .= $this->_scripts[$r]["code"];
                 } else {
-					if( file_exists($this->_scripts[$r]["code"]) ) {
-						Log::info( "loading JS path: " . $this->_scripts[$r]["code"]  );
-						$code .= "\n/* JS_FILE : $r */\n";
-						$code .= file_get_contents( $this->_scripts[$r]["code"] );
-					} else {					
-						Log::warn( "Can not load JS path: " . $this->_scripts[$r]["code"]  );
-						/*	
-						$filePath = $app->getPath() . "/". file_exists($this->_scripts[$r]["code"]);						
-						if(!file_exists($this->_scripts[$r]["code"])) {
-							$code .= file_get_contents($this->_scripts[$r]["code"]);
-						}						
-						*/
-					}                    
+                    if( file_exists($this->_scripts[$r]["code"]) ) {
+                        Log::info( "loading JS path: " . $this->_scripts[$r]["code"]  );
+                        $code .= "\n/* JS_FILE : $r */\n";
+                        $code .= file_get_contents( $this->_scripts[$r]["code"] );
+                    } else {
+                        Log::warn( "Can not load JS path: " . $this->_scripts[$r]["code"]  );
+                    }
                 }
             }
 
@@ -141,12 +162,11 @@ class JSQueue extends Queue {
 
             if( !@file_put_contents( $path, $code) ) {
                 Log::warn("Can not write packed js : $path");
-                $this->flush();
-                return;
+                return false;
             };
         }
 
         $md5 = md5_file( $path );
-        echo "<script src='".$url."?".$md5."'></script>\n";
+        return "<script src='".$url."?".$md5."'></script>\n";
     }
 }
