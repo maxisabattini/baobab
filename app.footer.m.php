@@ -1,4 +1,3 @@
-<!-- App Footer -->
 <?php
 
 if( ! $this->getVar("noFlushJs") ) {

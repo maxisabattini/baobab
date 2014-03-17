@@ -167,6 +167,6 @@ class JSQueue extends Queue {
 
         //$md5 = md5_file( $path );
         //return "<script src='".$url."?".$md5."'></script>\n";
-        return "<script src='".$url."'></script>\n";
+        return "<script async src='".$url."'></script>\n";
     }
 }

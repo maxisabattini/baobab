@@ -234,14 +234,24 @@ class App {
 
     /**
      * Get the app url, by default is a base url.
-     * if base false is provided, return a full url.
+     * If base false is provided, return a full url.
+	 * If base is a string, this its used like custom base, mean 'url_statics'
+	 * 'url_images'.
      *
      * @param bool $base
      * @return string
      */
-    public function getUrl( $base=true ) {
+    public function getUrl( $base=true ) {			
     	if($base) {
-    		return $this->config("url_base");
+			if( is_bool($base) ) {
+				return $this->config("url_base");
+			} else {
+				$customBase=$this->config("url_$base");
+				if(!$customBase) {
+					$customBase=$this->config("url_base");
+				}
+				return $customBase;
+			}
     	} else {
     		return $this->config("url");
     	}

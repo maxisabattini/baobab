@@ -32,6 +32,11 @@ class CssQueue extends Queue {
     public function flushPacked() {
 
         $all = $this->getAll();
+
+		if(!$all) {
+            return;
+        }
+
         $hash = md5( implode("",$all) );
 
         $app = App::getInstance();
