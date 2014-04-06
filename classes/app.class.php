@@ -15,18 +15,23 @@ require_once "request.class.php";
 require_once "response.class.php";
 require_once "router.class.php";
 require_once "route.class.php";
+require_once "language.class.php";
 
 class App {
 
     /**
      * Get an instance of App by name.
      *
-     * @param string $name App instance name
+     * @param string $options App instance initial options
      * @return \baobab\App Default App instance.
      */
-    public static function getInstance($name = 'default') {
+    public static function getInstance($options=array()) {		
+		$name='default';
+		if(isset($options['name'])) {
+			$name=$options['name'];
+		}	
         if( ! isset(self::$_instances[$name]) ) {
-            self::$_instances[$name] = new self($name);
+            self::$_instances[$name] = new self($name, $options);
         }
         return self::$_instances[$name];
     }
@@ -324,6 +329,16 @@ class App {
     	return $this->_response;
     }
 
+    /**
+     * Get the app language
+     *
+     * @return Language
+     */
+    public function getLanguage(){
+    	return $this->_language;
+    }
+
+
     /*
     |--------------------------------------------------------------------------
     | Private members
@@ -380,11 +395,19 @@ class App {
 
 
     /**
+     * Default language
+     *
+     * @var \baobab\Language
+     */
+    protected $_language = null;
+
+
+    /**
      * Create a new App.
      *
      * @param string $name An optional App name.
      */
-    private function __construct($name="") {
+    private function __construct($name="", $options=array()) {        
 
         $defaults = array(
 
@@ -404,14 +427,26 @@ class App {
             "layouts_path"   => array(
                 "layouts"
             ),
+            "languages_path"   => array(
+                "languages"
+            ),
+
+            "languages_default" => "en_US",
         );
         
         $this->_config = new Parameters($defaults);
-        $this->config("name", $name);
-
+		
+		//Default name
+		$this->config("name", $name);
+		
+		//Default path
         $baobabPath = dirname ( dirname(__FILE__) );
         $_path = dirname(dirname(dirname( $baobabPath ) ) );
         $this->config("path", $_path);
+		
+		//Custom options 
+		$this->_config->merge($options);
+
 
         $this->_response = new Response();
 		$this->_request = Request::getInstance();
@@ -457,6 +492,8 @@ class App {
         Log::debug("Map Uri: ". $this->_mapUri );
 
         $this->_router = new Router($this->_mapUri);
+
+        $this->_language=new Language( $this->config("languages_default"), $this->config("languages_path"));
     }
 
     protected function _executeRoute($route){
@@ -465,6 +502,11 @@ class App {
 
         Log::debug("Route params:");
         Log::debug($route->parameters);
+
+        if(isset($route->parameters->lang)){
+            $this->_language=new Language($route->parameters->lang, $this->config("languages_path"));
+        }
+
         $callable = $route->action;
         if(!$callable) {
             Log::warn("Not callable or controller for this map: ". $route->pattern );

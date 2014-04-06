@@ -6,10 +6,9 @@ class Controller {
 
 	protected $_params;
     protected $_view;
-    //protected $vars = array();
-
+    
     public $app=null;
-
+    
 	public function __construct( $view, $params = array(), $app=null ) {
 		$this->_params = new Parameters($params);
 		$this->_view = $view;
@@ -21,13 +20,15 @@ class Controller {
         }
     }
 
+    public function _($key, $placeholders=array()){
+        return $this->app->getLanguage()->get($key, $placeholders);
+    }
+
     public function setView($view){
 		$this->_view = $view;
     }
 
     public function render($name="", $params=array(), $isModule=true) {
-
-
 
         if($name) {
             Log::debug("Render on Controller : $name");
@@ -73,6 +74,10 @@ class Controller {
 
     public function setVar($name, $value) {
         $this->_params[$name]=$value;
+    }
+
+    public function setVars($array) {
+        $this->_params->merge($array);
     }
 
     public function getVar($name) {

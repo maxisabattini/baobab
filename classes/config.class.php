@@ -35,7 +35,10 @@ class Config {
     
     public function loadFile( $file ) {
 
-        if ( ! file_exists( $file )) return false ;
+        if ( ! file_exists( $file )) {
+			Log::warn("Can not load file: $file");
+			return false ;
+		}
 
         $ext = substr($file, -4, 4);
 
