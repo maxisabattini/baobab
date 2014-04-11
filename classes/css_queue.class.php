@@ -22,50 +22,89 @@ class CssQueue extends Queue {
         $this->_files[$name]=$file;
         parent::add($name, array() );
     }
+	
+	public function flush( $packed=false ) {
 
-    public function flush() {
-        foreach( $this->getAll() as $r ) {
-            echo '<link href="'. $this->_files[$r] . '" media="all" rel="stylesheet" type="text/css">' . "\n";
-        }
-    }
-
-    public function flushPacked() {
-
-        $all = $this->getAll();
-
+		$app = App::getInstance();
+		$packed = $app->config("packed_resources") || $packed;
+	
+		$all = $this->getAll();
 		if(!$all) {
             return;
         }
-
-        $hash = md5( implode("",$all) );
-
-        $app = App::getInstance();
-
-        $appUrl = $app->getUrl();
-        //$appName = urlencode($appUrl);
-        $appName = md5($appUrl);
-
-        $url = $app->config("packed_resources_url");
-        if ( substr($url, 0, 7) != 'http://' && substr($url, 0, 8) != 'https://' && substr($url, 0, 2) != '//') {
-            $url = $appUrl . "/" . $url;
+	
+		if(!$packed) {			
+		    foreach( $all as $r ) {
+				echo '<link href="'. $this->_files[$r] . '" media="all" rel="stylesheet" type="text/css">' . "\n";
+			}
+		} else {
+			$results=$this->_resolvePacked($all);
+			$url=$results["url"];
+			echo '<link href="'. $url.'" media="all" rel="stylesheet" type="text/css">';
+		}	
+		$this->clear();
+	}
+	
+	public function get( $packed=false ) {
+		
+		$buffer="";
+		
+        $all = $this->getAll();
+		if(!$all) {
+            return "";
         }
-        $url = $url . "/$appName.$hash.css";
+		
+		$app = App::getInstance();
+		$packed = $app->config("packed_resources") || $packed;
+		
+		if(!$packed) {		
+			$buffer=$this->_getFilesContent($all);
+		} else {
+			$results=$this->_resolvePacked($all);
+			$buffer=file_get_contents( $results["path"] );
+		}	
+		$this->clear();
+		return $buffer;
+	}
 
-        $path = $app->config("packed_resources_path");
-        $path = $path . "/$appName.$hash.css";
+	//Compat
+    public function flushPacked() {
+		return $this->flush( true );
+    }
 
+	private function _resolvePacked($all) {
+	
+		$hash = md5( implode("",$all) );
+
+		$app = App::getInstance();
+
+		$appUrl = $app->getUrl();
+		//$appName = urlencode($appUrl);
+		$appName = md5($appUrl);
+
+		$url = $app->config("packed_resources_url");
+		if ( substr($url, 0, 7) != 'http://' && substr($url, 0, 8) != 'https://' && substr($url, 0, 2) != '//') {
+			$url = $appUrl . "/" . $url;
+		}
+		$url = $url . "/$appName.$hash.css";
+
+		$path = $app->config("packed_resources_path");
+		$path = $path . "/$appName.$hash.css";
+
+		$this->_pack($path);
+		
+		return array(
+			"url"	=>	$url,
+			"path"	=>	$path,
+		);
+	}
+	
+	private function _pack($path){
 
         if( ! file_exists($path) ) {
 
-            $code = "";
-            foreach( $all as $r ) {
-                $resource = $this->_files[$r];
-                if( substr($resource,0,2) == "//") {
-                    $resource = "http:$resource";
-                }
-                $code .= file_get_contents( $resource );
-            }
-
+            $code = $this->_getFilesContent($all);
+            
             //Minifier
             /* remove comments */
             $code = preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $code);
@@ -81,9 +120,17 @@ class CssQueue extends Queue {
                 return;
             }
         }
-
-        //$md5 = md5_file( $path );
-        //echo '<link href="'. $url."?".$md5.'" media="all" rel="stylesheet" type="text/css">';
-        echo '<link href="'. $url.'" media="all" rel="stylesheet" type="text/css">';
-    }
+	}
+	
+	private function _getFilesContent($all) {	
+		$code = "";
+		foreach( $all as $r ) {
+			$resource = $this->_files[$r];
+			if( substr($resource,0,2) == "//") {
+				$resource = "http:$resource";
+			}
+			$code .= file_get_contents( $resource );
+		}
+		return $code;
+	}
 }
