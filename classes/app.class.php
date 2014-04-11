@@ -143,8 +143,10 @@ class App {
             $page404='404';
             $route=$this->_router->getRouteByName($page404);
             if($route) {
+				Log::debug("Throwing 404 page");
                 $this->_executeRoute($route);
             } else {
+				Log::debug("Throwing 404");
                 header('HTTP/1.0 404 Not Found');
             }
         }
