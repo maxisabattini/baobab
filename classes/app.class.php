@@ -59,8 +59,16 @@ class App {
             $routeName=$pieces[0];
             parse_str( $pieces[1] , $parameters );
         }
-
-        $route = $this->_router->getRouteByName($routeName);
+		
+		$code=$this->_language->getCode();
+		if( $this->config("languages_default") != $code ) {
+			$route = $this->_router->getRouteByName("$routeName:$code");
+			if(!$route) {
+				$route = $this->_router->getRouteByName($routeName);
+			}
+		} else {
+			$route = $this->_router->getRouteByName($routeName);
+		}
 
         $url = $this->config("url_base");
         if(!$this->config("rewrite")) {
@@ -101,21 +109,27 @@ class App {
 
     public function route( $routes=array() ) {
 
-        foreach($routes as $k=>$v) {
+        foreach($routes as $pattern=>$v) {
 
-            if($k=="*") {
+            if($pattern=="*") {
                 $this->_config->merge($v);
                 continue;
             }
 
             if(isset($v["page"])) {
-                $action = $v["page"];                
+                $action = $v["page"];
+				$name=$action;
 
-                if($k==".") {
-                    $k="/";
+                if($pattern==".") {
+                    $pattern="/";
                 }
+				
+				//Language mapping
+				if( isset($v["lang"]) ) {
+					$name = $action . ":". $v["lang"];
+				}
 
-                $this->_router->map($k, $action, $action, $v);                
+                $this->_router->map($pattern, $action, $name, $v);                
             }
         }
 
@@ -492,8 +506,7 @@ class App {
         Log::debug("Map Uri: ". $this->_mapUri );
 
         $this->_router = new Router($this->_mapUri);
-
-        $this->_language=new Language( $this->config("languages_default"), $this->config("languages_path"));
+		$this->_language=new Language( $this->config("languages_default"), $this->config("languages_path"));
     }
 
     protected function _executeRoute($route){
@@ -503,10 +516,10 @@ class App {
         Log::debug("Route params:");
         Log::debug($route->parameters);
 
-        if(isset($route->parameters->lang)){
-            $this->_language=new Language($route->parameters->lang, $this->config("languages_path"));
+        if(isset($route->parameters["lang"])){
+            $this->_language=new Language($route->parameters["lang"], $this->config("languages_path"));
         }
-
+		
         $callable = $route->action;
         if(!$callable) {
             Log::warn("Not callable or controller for this map: ". $route->pattern );
@@ -588,17 +601,29 @@ class App {
 
     protected function _getViewFile($name, $isModule=true) {
         $paths = $isModule ? $this->config("modules_path") : $this->config("pages_path") ;
-
+	
+		$suffixes=array();		
+		$code=$this->_language->getCode();
+		if( $this->config("languages_default") != $code ) {
+			$suffixes[]=".$code";
+		}		
+		$suffixes[]="";
+		
+		Log::debug( "Using view file suffixes : " );
+		Log::debug( $suffixes );
+		
         if(!is_array($paths)) {
             $paths = array( $paths );
         }
 
-        foreach( array_reverse($paths) as $path) {
-            $viewFile = $path . "/" . $name . ( $isModule ? ".m" : '' ) . ".php";
-            if(file_exists($viewFile)){
-                Log::debug( "Using view file : ( " . $viewFile ." ) " );
-                return $viewFile;
-            }
+        foreach( array_reverse($paths) as $path) {		
+			foreach($suffixes as $suffix) {				
+				$viewFile = $path . "/" . $name . $suffix . ( $isModule ? ".m" : '' ) . ".php";
+				if(file_exists($viewFile)){
+					Log::debug( "Using view file : ( " . $viewFile ." ) " );
+					return $viewFile;
+				}
+			}
         }
 
         return false;
