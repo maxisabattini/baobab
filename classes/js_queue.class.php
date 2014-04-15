@@ -62,49 +62,92 @@ class JSQueue extends Queue {
         }
     }
 
-    public function flush() {
+    public function get( $packed=false ) {
+
+        $buffer="";
 
         $all = $this->getAll();
-
-        foreach( $all as $r ) {
-            if( $this->_scripts[$r]["type"] == "script" ) {
-                echo "<script>" . $this->_scripts[$r]["code"] . "</script>\n";
-            } else {
-                echo "<script src='" . $this->_scripts[$r]["code"] . "'></script>\n";
-            }
+        if(!$all) {
+            return "";
         }
+
+        $app = App::getInstance();
+        $packed = $app->config("packed_resources") || $packed;
+
+        if(!$packed) {
+            $buffer="";
+            foreach( $all as $r ) {
+                if( $this->_scripts[$r]["type"] == "script" ) {
+                    $buffer.=$this->_scripts[$r]["code"];
+                } else {
+                    $buffer.= file_get_contents( $this->_scripts[$r]["code"] );
+                }
+            }
+        } else {
+            $results=$this->_resolvePacked($all);
+            $buffer=file_get_contents( $results["path"] );
+        }
+        $this->clear();
+        return $buffer;
     }
 
+    public function flush( $packed=false ) {
+
+        $app = App::getInstance();
+        $packed = $app->config("packed_resources") || $packed;
+
+        $all = $this->getAll();
+        if(!$all) {
+            return;
+        }
+
+        if(!$packed) {
+            foreach( $all as $r ) {
+                if( $this->_scripts[$r]["type"] == "script" ) {
+                    echo "<script>" . $this->_scripts[$r]["code"] . "</script>\n";
+                } else {
+                    echo "<script src='" . $this->_scripts[$r]["code"] . "'></script>\n";
+                }
+            }
+        } else {
+            $results=$this->_resolvePacked($all);
+            $url=$results["url"];
+            echo "<script async src='".$url."'></script>\n";
+        }
+        $this->clear();
+    }
+
+    //Compat
     public function flushPacked() {
+        return $this->flush( true );
+    }
+
+    private function _resolvePacked($all){
 
         $app = App::getInstance();
 
-        $duration= 60 * 10 ;
-        $key = "JSQueue-" . $app->getUrl(true);
+        $duration = $app->config("statics_resource_js_cache_time");
+        if(!$duration) {
+            $duration= 60 * 10 ;
+        }
+
+        $key = "JSQueue-" . $app->getUrl(false);
+        Log::info("JSQueue for : $key" );
 
         $cache = Cache::getInstance();
         $packed = $cache->get($key, null , $duration );
         if(!$packed) {
-            $packed = $this->_flushPacked();
+            $packed = $this->_resolvePackedReal($all);
             if( ! is_null($packed) ) {
                 $cache->set($key, $packed, $duration );
             }
         }
 
-        Log::info("JSQueue for : $key" );
         Log::debug($packed);
-
-        if(! $packed ) {
-            $this->flush();
-            return;
-        }
-
-        echo $packed;
+        return $packed;
     }
 
-    private function _flushPacked() {
-
-        $all = $this->getAll();
+    private function _resolvePackedReal($all) {
 
         $allReal = array();
         foreach( $all as $r ) {
@@ -165,8 +208,10 @@ class JSQueue extends Queue {
             };
         }
 
-        //$md5 = md5_file( $path );
-        //return "<script src='".$url."?".$md5."'></script>\n";
-        return "<script async src='".$url."'></script>\n";
+        return array(
+            "url"	=>	$url,
+            "path"	=>	$path,
+        );
     }
+
 }

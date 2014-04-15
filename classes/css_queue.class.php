@@ -91,7 +91,7 @@ class CssQueue extends Queue {
 		$path = $app->config("packed_resources_path");
 		$path = $path . "/$appName.$hash.css";
 
-		$this->_pack($path);
+		$this->_pack($path, $all);
 		
 		return array(
 			"url"	=>	$url,
@@ -99,7 +99,7 @@ class CssQueue extends Queue {
 		);
 	}
 	
-	private function _pack($path){
+	private function _pack($path, $all){
 
         if( ! file_exists($path) ) {
 

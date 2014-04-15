@@ -35,7 +35,13 @@ class Queue {
 
     public function getAll() {
 
-        $duration= 60 * 10 ;
+        $app = App::getInstance();
+
+        $duration = $app->config("statics_resource_queue_cache_time");
+        if(!$duration) {
+            $duration= 60 * 10 ;
+        }
+
         $key = "Queue-" . md5(print_r($this->registered, true));
 
         $cache = Cache::getInstance();
@@ -47,7 +53,7 @@ class Queue {
             }
         }
 
-        Log::info("Queue for : $key" );
+        Log::info("Queue with duration $duration sec for : $key" );
         Log::debug($all);
 
         return $all;
