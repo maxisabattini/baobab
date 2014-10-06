@@ -39,15 +39,20 @@ class Request {
     }
 
     public function isAjax() {
-        return $_isAjax;
+        return $this->_isAjax;
     }
 
     public function getMethod(){
         return strtoupper($this->_method);
     }
 
-    public function getVar($name) {
+    public function getVar($name, $filters=array(), $default=null) {
+        //Sanitize here
         return isset($_REQUEST[$name])?$_REQUEST[$name]:null;
+    }
+
+    public function getVars() {
+        return $_REQUEST;
     }
 
     public function getHeader($name) {      
@@ -55,13 +60,11 @@ class Request {
     }
 
     public function hasFiles(){
-        //TODO:
-        return false;
+        return count($_FILES) > 0;
     }
 
     public function getFiles(){
-        //TODO:
-        return false;
+        return $_FILES;
     }
 
     public function getServerAddress() {

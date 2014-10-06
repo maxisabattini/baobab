@@ -24,11 +24,9 @@ class Response {
     }
 
     public function apply($response=null) {
-        /*
-        for( $this->_headers as $key => $value ) {
+        foreach( $this->_headers as $key => $value ) {
             header("$key: $value");
         }
-        */
     }
 
     private $_headers=null;
