@@ -432,7 +432,7 @@ class CliOutputWeb extends CliOutputDefault {
 			case "Paragraph":
             case "Comment":                
 		        print '<div class="alert alert-info">';
-		        $this->out($string, $args);
+		        $this->out($string, $values);
 		        print '</div>';
 			break;				
 
