@@ -4,6 +4,10 @@ namespace baobab;
 
 class Cache {
 
+    const MINUTE=60;
+    const HOUR=3600;
+    const DAY=86400;	
+
     protected static $_instance;
 
     protected $_link;
